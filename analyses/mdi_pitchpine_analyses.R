@@ -2,41 +2,177 @@
 
 library(tidyverse)
 library(emmeans)
+library(lme4)
+library(car)
+
+multiplot <- function(..., plotlist=NULL, cols) {
+  require(grid)
+  
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+  
+  numPlots = length(plots)
+  
+  # Make the panel
+  plotCols = cols                          # Number of columns of plots
+  plotRows = ceiling(numPlots/plotCols) # Number of rows needed, calculated from # of cols
+  
+  # Set up the page
+  grid.newpage()
+  pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
+  vplayout <- function(x, y)
+    viewport(layout.pos.row = x, layout.pos.col = y)
+  
+  # Make each plot, in the correct location
+  for (i in 1:numPlots) {
+    curRow = ceiling(i/plotCols)
+    curCol = (i-1) %% plotCols + 1
+    print(plots[[i]], vp = vplayout(curRow, curCol ))
+  }
+  
+}
 
 ## read in cleaned data
 data = read.csv('../data/mdi_all_clean.csv')
 data$CN_foliar = data$C_foliar/data$N_foliar
 data$CN_soil = data$C_soil/data$N_soil
+data$fire[data$Name == 'CAD'] = 'fire' 
+data$fire[data$Name == 'CADCLIFFS'] = 'fire'
+data$fire[data$Name == 'STSAUV'] = 'no fire'
+data$fire[data$Name == 'WOND'] = 'no fire'
 head(data)
 
+## site means
+data_group_by_Name = group_by(data, Name)
+data_Name_means = summarise(data_group_by_Name,
+                            Elevation_mean = mean(Elevation, na.rm = T),
+                            Slope_mean = mean(Slope, na.rm = T),
+                            Aspect_mean = mean(Aspect, na.rm = T))
+
 ## fit models and explore results
+
+### elevation
+Elevation_lm = lm(log(Elevation) ~ Name, data = data)
+#plot(resid(Elevation_lm) ~ fitted(Elevation_lm))
+Anova(Elevation_lm)
+cld(emmeans(Elevation_lm, ~Name), alpha = 0.1)
 
 ### height
 height_lm = lm(log(height) ~ Name, data = data)
 #plot(resid(height_lm) ~ fitted(height_lm))
-anova(height_lm)
-cld(emmeans(height_lm, ~Name))
+Anova(height_lm)
+cld(emmeans(height_lm, ~Name), alpha = 0.1)
 
-ggplot(data = data, aes(x = Name, y = log(height))) +
-  geom_boxplot()
+height_lmer_cont = lmer(log(height) ~ Elevation * fire + (1|Name), data = data)
+Anova(height_lmer_cont)
+test(emtrends(height_lmer_cont, ~fire, var = 'Elevation'))
+
+height_plot = ggplot(data = data, aes(x = Name, y = log(height), col = fire)) +
+  theme(legend.position = "none", 
+        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+        axis.text.x=element_text(size=rel(2), colour = 'black'),
+        axis.text.y=element_text(size=rel(2), colour = 'black'),
+        panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(colour = "grey")) +
+  geom_boxplot(outlier.color = NA, fill = 'white') +
+  geom_dotplot(binaxis = 'y', binwidth = 0.07, stackdir = 'center', alpha = 0.5) +
+  # scale_x_discrete(labels = c('Ambient', 'Added N')) +
+  xlab('Site') +
+  ylab(expression('ln(Height)'))
+
+height_plot_elevation = ggplot(data = data, aes(x = Elevation, y = log(height), col = fire)) +
+  theme(legend.position = "right", 
+        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+        axis.text.x=element_text(size=rel(2), colour = 'black'),
+        axis.text.y=element_text(size=rel(2), colour = 'black'),
+        panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(colour = "grey")) +
+  geom_point(size = 6) +
+  ylab(expression('ln(Height)'))
+
+jpeg(filename = "plots/height_plot.jpeg", width = 1000, height = 600, units = 'px')
+multiplot(height_plot, height_plot_elevation, cols = 2)
+dev.off()
 
 ### canopy
 canopy_lm = lm(log(canopy) ~ Name, data = data)
 #plot(resid(canopy_lm) ~ fitted(canopy_lm))
 anova(canopy_lm)
-cld(emmeans(canopy_lm, ~Name))
+cld(emmeans(canopy_lm, ~Name), alpha = 0.1)
 
-ggplot(data = data, aes(x = Name, y = log(canopy))) +
-  geom_boxplot()
+canopy_lmer_cont = lmer(log(canopy) ~ Elevation * fire + (1|Name), data = data)
+Anova(canopy_lmer_cont)
+test(emtrends(canopy_lmer_cont, ~fire, var = 'Elevation'))
+
+canopy_plot = ggplot(data = data, aes(x = Name, y = log(canopy), col = fire)) +
+  theme(legend.position = "none", 
+        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+        axis.text.x=element_text(size=rel(2), colour = 'black'),
+        axis.text.y=element_text(size=rel(2), colour = 'black'),
+        panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(colour = "grey")) +
+  geom_boxplot(outlier.color = NA, fill = 'white') +
+  geom_dotplot(binaxis = 'y', binwidth = 0.07, stackdir = 'center', alpha = 0.5) +
+  # scale_x_discrete(labels = c('Ambient', 'Added N')) +
+  xlab('Site') +
+  ylab(expression('ln(Canopy)'))
+
+canopy_plot_elevation = ggplot(data = data, aes(x = Elevation, y = log(canopy), col = fire)) +
+  theme(legend.position = "right", 
+        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+        axis.text.x=element_text(size=rel(2), colour = 'black'),
+        axis.text.y=element_text(size=rel(2), colour = 'black'),
+        panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(colour = "grey")) +
+  geom_point(size = 6) +
+  ylab(expression('ln(Canopy)'))
+
+jpeg(filename = "plots/canopy_plot.jpeg", width = 1000, height = 600, units = 'px')
+multiplot(canopy_plot, canopy_plot_elevation, cols = 2)
+dev.off()
 
 ### diam
 diam_lm = lm(log(diam) ~ Name, data = data)
 #plot(resid(diam_lm) ~ fitted(diam_lm))
 anova(diam_lm)
-cld(emmeans(diam_lm, ~Name))
+cld(emmeans(diam_lm, ~Name), alpha = 0.1)
 
-ggplot(data = data, aes(x = Name, y = log(diam))) +
-  geom_boxplot()
+diam_lmer_cont = lmer(log(diam) ~ Elevation * fire + (1|Name), data = data)
+Anova(diam_lmer_cont)
+test(emtrends(diam_lmer_cont, ~fire, var = 'Elevation'))
+
+diam_plot = ggplot(data = data, aes(x = Name, y = log(diam), col = fire)) +
+  theme(legend.position = "none", 
+        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+        axis.text.x=element_text(size=rel(2), colour = 'black'),
+        axis.text.y=element_text(size=rel(2), colour = 'black'),
+        panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(colour = "grey")) +
+  geom_boxplot(outlier.color = NA, fill = 'white') +
+  geom_dotplot(binaxis = 'y', binwidth = 0.07, stackdir = 'center', alpha = 0.5) +
+  # scale_x_discrete(labels = c('Ambient', 'Added N')) +
+  xlab('Site') +
+  ylab(expression('ln(Diameter)'))
+
+diam_plot_elevation = ggplot(data = data, aes(x = Elevation, y = log(diam), col = fire)) +
+  theme(legend.position = "right", 
+        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+        axis.text.x=element_text(size=rel(2), colour = 'black'),
+        axis.text.y=element_text(size=rel(2), colour = 'black'),
+        panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(colour = "grey")) +
+  geom_point(size = 6) +
+  ylab(expression('ln(Diameter)'))
+
+jpeg(filename = "plots/diam_plot.jpeg", width = 1000, height = 600, units = 'px')
+multiplot(diam_plot, diam_plot_elevation, cols = 2)
+dev.off()
 
 ### d13C
 d13C_lm = lm((d13C) ~ Name, data = data)
