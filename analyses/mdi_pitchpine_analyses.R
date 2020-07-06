@@ -71,6 +71,9 @@ Elevation_lm = lm(as.formula(paste(dep_variables[1],
 Anova(Elevation_lm)
 cld(emmeans(Elevation_lm, ~elevation_fac * fire))
 
+ggplot(data = data, aes(x = Name, y = log(Elevation))) +
+  geom_boxplot()
+
 ### height
 height_lm = lm(as.formula(paste(dep_variables[2],
                                 paste(ind_variables, collapse = "*"),
@@ -79,38 +82,41 @@ height_lm = lm(as.formula(paste(dep_variables[2],
 Anova(height_lm)
 cld(emmeans(height_lm, ~elevation_fac * fire))
 
+ggplot(data = data, aes(x = Name, y = log(height))) +
+  geom_boxplot()
+
 # height_lmer_cont = lmer(log(height) ~ Elevation * fire + (1|Name), data = data)
 # Anova(height_lmer_cont)
 # test(emtrends(height_lmer_cont, ~fire, var = 'Elevation'))
 
-height_plot = ggplot(data = data, aes(x = Name, y = log(height), col = fire)) +
-  theme(legend.position = "none", 
-        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-        axis.text.x=element_text(size=rel(2), colour = 'black'),
-        axis.text.y=element_text(size=rel(2), colour = 'black'),
-        panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "grey")) +
-  geom_boxplot(outlier.color = NA, fill = 'white') +
-  geom_dotplot(binaxis = 'y', binwidth = 0.07, stackdir = 'center', alpha = 0.5) +
-  # scale_x_discrete(labels = c('Ambient', 'Added N')) +
-  xlab('Site') +
-  ylab(expression('ln(Height)'))
-
-height_plot_elevation = ggplot(data = data, aes(x = Elevation, y = log(height), col = fire)) +
-  theme(legend.position = "right", 
-        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-        axis.text.x=element_text(size=rel(2), colour = 'black'),
-        axis.text.y=element_text(size=rel(2), colour = 'black'),
-        panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "grey")) +
-  geom_point(size = 6) +
-  ylab(expression('ln(Height)'))
-
-jpeg(filename = "plots/height_plot.jpeg", width = 1000, height = 600, units = 'px')
-multiplot(height_plot, height_plot_elevation, cols = 2)
-dev.off()
+# height_plot = ggplot(data = data, aes(x = Name, y = log(height), col = fire)) +
+#   theme(legend.position = "none", 
+#         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+#         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+#         axis.text.x=element_text(size=rel(2), colour = 'black'),
+#         axis.text.y=element_text(size=rel(2), colour = 'black'),
+#         panel.background = element_rect(fill = 'white', colour = 'black'),
+#         panel.grid.major = element_line(colour = "grey")) +
+#   geom_boxplot(outlier.color = NA, fill = 'white') +
+#   geom_dotplot(binaxis = 'y', binwidth = 0.07, stackdir = 'center', alpha = 0.5) +
+#   # scale_x_discrete(labels = c('Ambient', 'Added N')) +
+#   xlab('Site') +
+#   ylab(expression('ln(Height)'))
+# 
+# height_plot_elevation = ggplot(data = data, aes(x = Elevation, y = log(height), col = fire)) +
+#   theme(legend.position = "right", 
+#         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+#         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+#         axis.text.x=element_text(size=rel(2), colour = 'black'),
+#         axis.text.y=element_text(size=rel(2), colour = 'black'),
+#         panel.background = element_rect(fill = 'white', colour = 'black'),
+#         panel.grid.major = element_line(colour = "grey")) +
+#   geom_point(size = 6) +
+#   ylab(expression('ln(Height)'))
+# 
+# jpeg(filename = "plots/height_plot.jpeg", width = 1000, height = 600, units = 'px')
+# multiplot(height_plot, height_plot_elevation, cols = 2)
+# dev.off()
 
 ### canopy
 canopy_lm = lm(as.formula(paste(dep_variables[3],
@@ -120,38 +126,41 @@ canopy_lm = lm(as.formula(paste(dep_variables[3],
 anova(canopy_lm)
 cld(emmeans(canopy_lm, ~elevation_fac * fire))
 
+ggplot(data = data, aes(x = Name, y = log(canopy))) +
+  geom_boxplot()
+
 # canopy_lmer_cont = lmer(log(canopy) ~ Elevation * fire + (1|Name), data = data)
 # Anova(canopy_lmer_cont)
 # test(emtrends(canopy_lmer_cont, ~fire, var = 'Elevation'))
 
-canopy_plot = ggplot(data = data, aes(x = Name, y = log(canopy), col = fire)) +
-  theme(legend.position = "none", 
-        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-        axis.text.x=element_text(size=rel(2), colour = 'black'),
-        axis.text.y=element_text(size=rel(2), colour = 'black'),
-        panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "grey")) +
-  geom_boxplot(outlier.color = NA, fill = 'white') +
-  geom_dotplot(binaxis = 'y', binwidth = 0.07, stackdir = 'center', alpha = 0.5) +
-  # scale_x_discrete(labels = c('Ambient', 'Added N')) +
-  xlab('Site') +
-  ylab(expression('ln(Canopy)'))
-
-canopy_plot_elevation = ggplot(data = data, aes(x = Elevation, y = log(canopy), col = fire)) +
-  theme(legend.position = "right", 
-        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-        axis.text.x=element_text(size=rel(2), colour = 'black'),
-        axis.text.y=element_text(size=rel(2), colour = 'black'),
-        panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "grey")) +
-  geom_point(size = 6) +
-  ylab(expression('ln(Canopy)'))
-
-jpeg(filename = "plots/canopy_plot.jpeg", width = 1000, height = 600, units = 'px')
-multiplot(canopy_plot, canopy_plot_elevation, cols = 2)
-dev.off()
+# canopy_plot = ggplot(data = data, aes(x = Name, y = log(canopy), col = fire)) +
+#   theme(legend.position = "none", 
+#         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+#         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+#         axis.text.x=element_text(size=rel(2), colour = 'black'),
+#         axis.text.y=element_text(size=rel(2), colour = 'black'),
+#         panel.background = element_rect(fill = 'white', colour = 'black'),
+#         panel.grid.major = element_line(colour = "grey")) +
+#   geom_boxplot(outlier.color = NA, fill = 'white') +
+#   geom_dotplot(binaxis = 'y', binwidth = 0.07, stackdir = 'center', alpha = 0.5) +
+#   # scale_x_discrete(labels = c('Ambient', 'Added N')) +
+#   xlab('Site') +
+#   ylab(expression('ln(Canopy)'))
+# 
+# canopy_plot_elevation = ggplot(data = data, aes(x = Elevation, y = log(canopy), col = fire)) +
+#   theme(legend.position = "right", 
+#         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+#         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+#         axis.text.x=element_text(size=rel(2), colour = 'black'),
+#         axis.text.y=element_text(size=rel(2), colour = 'black'),
+#         panel.background = element_rect(fill = 'white', colour = 'black'),
+#         panel.grid.major = element_line(colour = "grey")) +
+#   geom_point(size = 6) +
+#   ylab(expression('ln(Canopy)'))
+# 
+# jpeg(filename = "plots/canopy_plot.jpeg", width = 1000, height = 600, units = 'px')
+# multiplot(canopy_plot, canopy_plot_elevation, cols = 2)
+# dev.off()
 
 ### diam
 diam_lm = lm(as.formula(paste(dep_variables[4],
@@ -161,38 +170,41 @@ diam_lm = lm(as.formula(paste(dep_variables[4],
 anova(diam_lm)
 cld(emmeans(diam_lm, ~elevation_fac * fire))
 
+ggplot(data = data, aes(x = Name, y = log(diam))) +
+  geom_boxplot()
+
 # diam_lmer_cont = lmer(log(diam) ~ Elevation * fire + (1|Name), data = data)
 # Anova(diam_lmer_cont)
 # test(emtrends(diam_lmer_cont, ~fire, var = 'Elevation'))
 
-diam_plot = ggplot(data = data, aes(x = Name, y = log(diam), col = fire)) +
-  theme(legend.position = "none", 
-        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-        axis.text.x=element_text(size=rel(2), colour = 'black'),
-        axis.text.y=element_text(size=rel(2), colour = 'black'),
-        panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "grey")) +
-  geom_boxplot(outlier.color = NA, fill = 'white') +
-  geom_dotplot(binaxis = 'y', binwidth = 0.07, stackdir = 'center', alpha = 0.5) +
-  # scale_x_discrete(labels = c('Ambient', 'Added N')) +
-  xlab('Site') +
-  ylab(expression('ln(Diameter)'))
-
-diam_plot_elevation = ggplot(data = data, aes(x = Elevation, y = log(diam), col = fire)) +
-  theme(legend.position = "right", 
-        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-        axis.text.x=element_text(size=rel(2), colour = 'black'),
-        axis.text.y=element_text(size=rel(2), colour = 'black'),
-        panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "grey")) +
-  geom_point(size = 6) +
-  ylab(expression('ln(Diameter)'))
-
-jpeg(filename = "plots/diam_plot.jpeg", width = 1000, height = 600, units = 'px')
-multiplot(diam_plot, diam_plot_elevation, cols = 2)
-dev.off()
+# diam_plot = ggplot(data = data, aes(x = Name, y = log(diam), col = fire)) +
+#   theme(legend.position = "none", 
+#         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+#         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+#         axis.text.x=element_text(size=rel(2), colour = 'black'),
+#         axis.text.y=element_text(size=rel(2), colour = 'black'),
+#         panel.background = element_rect(fill = 'white', colour = 'black'),
+#         panel.grid.major = element_line(colour = "grey")) +
+#   geom_boxplot(outlier.color = NA, fill = 'white') +
+#   geom_dotplot(binaxis = 'y', binwidth = 0.07, stackdir = 'center', alpha = 0.5) +
+#   # scale_x_discrete(labels = c('Ambient', 'Added N')) +
+#   xlab('Site') +
+#   ylab(expression('ln(Diameter)'))
+# 
+# diam_plot_elevation = ggplot(data = data, aes(x = Elevation, y = log(diam), col = fire)) +
+#   theme(legend.position = "right", 
+#         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+#         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+#         axis.text.x=element_text(size=rel(2), colour = 'black'),
+#         axis.text.y=element_text(size=rel(2), colour = 'black'),
+#         panel.background = element_rect(fill = 'white', colour = 'black'),
+#         panel.grid.major = element_line(colour = "grey")) +
+#   geom_point(size = 6) +
+#   ylab(expression('ln(Diameter)'))
+# 
+# jpeg(filename = "plots/diam_plot.jpeg", width = 1000, height = 600, units = 'px')
+# multiplot(diam_plot, diam_plot_elevation, cols = 2)
+# dev.off()
 
 ### d13C
 d13C_lm = lm(as.formula(paste(dep_variables[5],
@@ -447,4 +459,5 @@ cld(emmeans(retention_lm, ~elevation_fac * fire))
 ggplot(data = data, aes(x = Name, y = (retention))) +
   geom_boxplot()
 
+# rmarkdown::render("mdi_pitchpine_analyses.R", output_format = "pdf_document")
 
