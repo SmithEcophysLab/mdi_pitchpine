@@ -33,7 +33,7 @@ biophysical_isotope_foliar_soil = full_join(biophysical_isotope_foliar, soil, by
 biophysical_isotope_foliar_soil_geo = full_join(biophysical_isotope_foliar_soil, geo, by = c('ID', 'Name'))
 mdi_all = full_join(biophysical_isotope_foliar_soil_geo, retention, by = c('ID', 'Name'))
 
-write.csv(mdi_all, 'mdi_all_clean.csv')
+write.csv(mdi_all, 'mdi_all_clean.csv', row.names = F)
 
 
 
