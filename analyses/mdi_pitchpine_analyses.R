@@ -461,3 +461,59 @@ ggplot(data = data, aes(x = Name, y = (retention))) +
 
 # rmarkdown::render("mdi_pitchpine_analyses.R", output_format = "pdf_document")
 
+## tables and posthoc
+### soil organics
+write.csv(cbind(as.matrix(anova(C_soil_lm)[, c(1, 4, 5)]), 
+      as.matrix(anova(N_soil_lm)[, c(4, 5)]), 
+      as.matrix(anova(CN_soil_lm)[, c(4, 5)])),
+      'tables/soil_organics.csv')
+
+(summary(emmeans(C_soil_lm, ~fire))[1,2] - summary(emmeans(C_soil_lm, ~fire))[2,2])/ summary(emmeans(C_soil_lm, ~fire))[2,2]
+(summary(emmeans(C_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(C_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(C_soil_lm, ~elevation_fac))[2,2]
+(summary(emmeans(CN_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(CN_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(CN_soil_lm, ~elevation_fac))[2,2]
+
+write.csv(cbind(as.matrix(anova(Ca_soil_lm)[, c(1, 4, 5)]), 
+                as.matrix(anova(P_soil_lm)[, c(4, 5)]), 
+                as.matrix(anova(K_soil_lm)[, c(4, 5)]),
+                as.matrix(anova(Mg_soil_lm)[, c(4, 5)]),
+                as.matrix(anova(Al_soil_lm)[, c(4, 5)]),
+                as.matrix(anova(Zn_soil_lm)[, c(4, 5)])),
+          'tables/soil_inorganics.csv')
+
+(summary(emmeans(K_soil_lm, ~fire))[1,2] - summary(emmeans(K_soil_lm, ~fire))[2,2])/ summary(emmeans(K_soil_lm, ~fire))[2,2]
+(summary(emmeans(Ca_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(Ca_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(Ca_soil_lm, ~elevation_fac))[2,2]
+
+write.csv(as.matrix(anova(retention_lm)[, c(1, 4, 5)]),
+          'tables/retention.csv')
+
+write.csv(cbind(as.matrix(anova(C_foliar_lm)[, c(1, 4, 5)]), 
+                as.matrix(anova(N_foliar_lm)[, c(4, 5)]), 
+                as.matrix(anova(CN_foliar_lm)[, c(4, 5)])),
+          'tables/foliar_cn.csv')
+
+write.csv(cbind(as.matrix(anova(d13C_lm)[, c(1, 4, 5)]), 
+                as.matrix(anova(d15N_lm)[, c(4, 5)])),
+          'tables/foliar_isotope.csv')
+
+(summary(emmeans(d13C_lm, ~elevation_fac))[1,2] - summary(emmeans(d13C_lm, ~elevation_fac))[2,2])/ summary(emmeans(d13C_lm, ~elevation_fac))[2,2]
+
+write.csv(cbind(as.matrix(anova(Ca_foliar_lm)[, c(1, 4, 5)]), 
+                as.matrix(anova(P_foliar_lm)[, c(4, 5)]), 
+                as.matrix(anova(K_foliar_lm)[, c(4, 5)]),
+                as.matrix(anova(Mg_foliar_lm)[, c(4, 5)]),
+                as.matrix(anova(Al_foliar_lm)[, c(4, 5)]),
+                as.matrix(anova(Zn_foliar_lm)[, c(4, 5)])),
+          'tables/foliar_inorganics.csv')
+
+(summary(emmeans(P_foliar_lm, ~fire))[1,2] - summary(emmeans(P_foliar_lm, ~fire))[2,2])/ summary(emmeans(P_foliar_lm, ~fire))[2,2]
+(summary(emmeans(K_foliar_lm, ~fire))[1,2] - summary(emmeans(K_foliar_lm, ~fire))[2,2])/ summary(emmeans(K_foliar_lm, ~fire))[2,2]
+(summary(emmeans(Ca_foliar_lm, ~elevation_fac))[1,2] - summary(emmeans(Ca_foliar_lm, ~elevation_fac))[2,2])/ summary(emmeans(Ca_foliar_lm, ~elevation_fac))[2,2]
+(summary(emmeans(Zn_foliar_lm, ~elevation_fac))[1,2] - summary(emmeans(Zn_foliar_lm, ~elevation_fac))[2,2])/ summary(emmeans(Zn_foliar_lm, ~elevation_fac))[2,2]
+
+write.csv(cbind(as.matrix(anova(height_lm)[, c(1, 4, 5)]), 
+                as.matrix(anova(canopy_lm)[, c(4, 5)]), 
+                as.matrix(anova(diam_lm)[, c(4, 5)])),
+          'tables/allometry.csv')
+
+(summary(emmeans(canopy_lm, ~elevation_fac))[1,2] - summary(emmeans(canopy_lm, ~elevation_fac))[2,2])/ summary(emmeans(canopy_lm, ~elevation_fac))[2,2]
+
