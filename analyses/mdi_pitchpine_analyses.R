@@ -42,6 +42,12 @@ data$fire[data$Name == 'STSAUV'] = 'no fire'
 data$fire[data$Name == 'WOND'] = 'no fire'
 head(data)
 
+data_density = read.csv('../data/mdi_stand_density.csv')
+data_density$fire[data_density$site == 'CAD'] = 'fire' 
+data_density$fire[data_density$site == 'CADCLIFFS'] = 'fire'
+data_density$fire[data_density$site == 'STSAUV'] = 'no fire'
+data_density$fire[data_density$site == 'WOND'] = 'no fire'
+
 ## site means
 data_group_by_Name = group_by(data, Name)
 data_Name_means = summarise(data_group_by_Name,
@@ -52,6 +58,8 @@ data_Name_means = summarise(data_group_by_Name,
 ## create an elevation factor
 data$elevation_fac[data$Name == 'CAD' | data$Name == 'STSAUV'] = 'high'
 data$elevation_fac[data$Name == 'CADCLIFFS' | data$Name == 'WOND'] = 'low'
+data_density$elevation_fac[data_density$site == 'CAD' | data_density$site == 'STSAUV'] = 'high'
+data_density$elevation_fac[data_density$site == 'CADCLIFFS' | data_density$site == 'WOND'] = 'low'
 
 ## create a generic variable set to pass to formula argument
 ind_variables = c('elevation_fac', 'fire')
@@ -459,6 +467,16 @@ cld(emmeans(retention_lm, ~elevation_fac * fire))
 ggplot(data = data, aes(x = Name, y = (retention))) +
   geom_boxplot()
 
+### density
+head(data_density)
+density_lm = lm(mean_distance ~ elevation_fac * fire, data = data_density)
+#plot(resid(density_lm) ~ fitted(density_lm))
+anova(density_lm)
+cld(emmeans(density_lm, ~elevation_fac * fire))
+
+ggplot(data = data_density, aes(x = site, y = (mean_distance))) +
+  geom_boxplot()
+
 # rmarkdown::render("mdi_pitchpine_analyses.R", output_format = "pdf_document")
 
 ## tables and posthoc
@@ -516,4 +534,9 @@ write.csv(cbind(as.matrix(anova(height_lm)[, c(1, 4, 5)]),
           'tables/allometry.csv')
 
 (summary(emmeans(canopy_lm, ~elevation_fac))[1,2] - summary(emmeans(canopy_lm, ~elevation_fac))[2,2])/ summary(emmeans(canopy_lm, ~elevation_fac))[2,2]
+
+write.csv(anova(density_lm)[, c(1, 4, 5)],
+          'tables/density.csv')
+
+(summary(emmeans(density_lm, ~elevation_fac))[1,2] - summary(emmeans(density_lm, ~elevation_fac))[2,2])/ summary(emmeans(density_lm, ~elevation_fac))[2,2]
 
