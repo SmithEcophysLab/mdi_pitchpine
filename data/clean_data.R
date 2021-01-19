@@ -15,7 +15,7 @@ retention$retention = as.numeric(gsub("[\\%,]", "", retention$retention))
 soil = read.csv('raw/pitchpine_mdi_soil.csv')[, 1:12]
 colnames(soil) = c('ID', 'Name', 'Ca_soil', 'P_soil', 'K_soil', 'Mg_soil', 'Al_soil', 'Zn_soil',
                    'pH', 'CEC', 'C_soil', 'N_soil')
-geo = read.csv('raw/MDITreeGeoRasterData05152020.csv')
+geo = read.csv('raw/MDITreeGeoRasterData_2021.csv')
 geo$ID = NA
 geo$ID[geo$Name == 'CAD'] = paste(geo$ID1[geo$Name == 'CAD'], '-', 'HIGHELEV-DIST', 
                                   sep = '')

@@ -4,6 +4,7 @@ library(tidyverse)
 library(emmeans)
 library(lme4)
 library(car)
+library(circular)
 
 multiplot <- function(..., plotlist=NULL, cols) {
   require(grid)
@@ -72,7 +73,7 @@ dep_variables = c("log(Elevation)", "log(height)", "log(canopy)", "log(diam)",
 ## fit models and explore results
 
 ### elevation
-Elevation_lm = lm(as.formula(paste(dep_variables[1],
+Elevation_lm = lm(as.formula(paste("log(Elevation)",
                                    paste(ind_variables, collapse = "*"),
                                    sep = "~")), data = data)
 #plot(resid(Elevation_lm) ~ fitted(Elevation_lm))
@@ -81,6 +82,35 @@ cld(emmeans(Elevation_lm, ~elevation_fac * fire))
 
 ggplot(data = data, aes(x = Name, y = log(Elevation))) +
   geom_boxplot()
+
+### slope
+Slope_lm = lm(as.formula(paste("Slope",
+                                   paste(ind_variables, collapse = "*"),
+                                   sep = "~")), data = data)
+#plot(resid(Slope_lm) ~ fitted(Slope_lm))
+Anova(Slope_lm)
+cld(emmeans(Slope_lm, ~elevation_fac * fire))
+
+ggplot(data = data, aes(x = Name, y = Slope)) +
+  geom_boxplot()
+
+### aspect
+#### watson tests following: https://bigdata.duke.edu/sites/bigdata.duke.edu/files/site-images/FullLesson.html
+aspect_CAD = circular(data$Aspect[data$Name == 'CAD'],
+                      units="degrees", template="geographics")
+aspect_CADCLIFFS = circular(data$Aspect[data$Name == 'CADCLIFFS'],
+                            units="degrees", template="geographics")
+aspect_STSAUV = circular(data$Aspect[data$Name == 'STSAUV'],
+                         units="degrees", template="geographics")
+aspect_WOND = circular(data$Aspect[data$Name == 'WOND'],
+                       units="degrees", template="geographics")
+
+watson.two.test(aspect_CAD, aspect_CADCLIFFS) # P >0.1
+watson.two.test(aspect_CAD, aspect_STSAUV) # P < 0.001
+watson.two.test(aspect_CAD, aspect_WOND) # P < 0.05
+watson.two.test(aspect_CADCLIFFS, aspect_STSAUV) # P < 0.1
+watson.two.test(aspect_CADCLIFFS, aspect_WOND) # P < 0.05
+watson.two.test(aspect_STSAUV, aspect_WOND) # P <0.01
 
 ### height
 height_lm = lm(as.formula(paste(dep_variables[2],
