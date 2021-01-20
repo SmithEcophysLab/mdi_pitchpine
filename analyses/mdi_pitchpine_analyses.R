@@ -112,6 +112,11 @@ watson.two.test(aspect_CADCLIFFS, aspect_STSAUV) # P < 0.1
 watson.two.test(aspect_CADCLIFFS, aspect_WOND) # P < 0.05
 watson.two.test(aspect_STSAUV, aspect_WOND) # P <0.01
 
+plot_aspect_CAD = plot.circular(aspect_CAD, main = 'CAD aspect')
+plot_aspect_CADCLIFFS = plot.circular(aspect_CADCLIFFS, main = 'CADCLIFFS aspect')
+plot_aspect_STSAUV = plot.circular(aspect_STSAUV, main = 'STSAUV aspect')
+plot_aspect_WOND = plot.circular(aspect_WOND, main = 'WOND aspect')
+
 ### height
 height_lm = lm(as.formula(paste(dep_variables[2],
                                 paste(ind_variables, collapse = "*"),
