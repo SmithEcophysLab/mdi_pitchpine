@@ -5,6 +5,10 @@ library(emmeans)
 library(lme4)
 library(car)
 library(circular)
+library(multcompView)
+library(ggthemes)
+library(agricolae)
+library(patchwork)
 
 multiplot <- function(..., plotlist=NULL, cols) {
   require(grid)
@@ -33,21 +37,48 @@ multiplot <- function(..., plotlist=NULL, cols) {
   
 }
 
-## read in cleaned data
-data = read.csv('../data/mdi_all_clean.csv')
+letters <- function(df = data, y, .checkvar){
+  .checkvar <- sym(.checkvar)
+  
+  abs_max <- max(y, na.rm = TRUE)
+  max_y <- df %>% dplyr::group_by(Site) %>% 
+    dplyr::summarise(yaxis = max(!! .checkvar, na.rm = TRUE) + 0.05 * abs_max) # get the highest point for each species
+  hsd <- HSD.test(aov(y ~ Site, df), "Site", group = TRUE) # get Tukey HSD results
+  max_y$group <- hsd$groups$groups
+  return(max_y)
+}
+
+letters_log <- function(df = data, y, .checkvar){
+  .checkvar <- sym(.checkvar)
+  
+  abs_max <- max(y, na.rm = TRUE)
+  max_y <- df %>% dplyr::group_by(Site) %>% 
+    dplyr::summarise(yaxis = max(!! .checkvar, na.rm = TRUE) + 0.05 * abs_max) # get the highest point for each species
+  hsd <- HSD.test(aov(log(y) ~ Site, df), "Site", group = TRUE) # get Tukey HSD results
+  max_y$group <- hsd$groups$groups
+  return(max_y)
+}
+
+#### read in cleaned data ####
+setwd("~/Desktop/work/Smith Lab/mdi_pitchpine-master/")
+
+data = read.csv('data/mdi_all_clean.csv')
 data$CN_foliar = data$C_foliar/data$N_foliar
 data$CN_soil = data$C_soil/data$N_soil
+
+data_density = read.csv('data/mdi_stand_density.csv')
+colnames(data_density)[1] <- "Name"
+
+## assign fire history status to each site
 data$fire[data$Name == 'CAD'] = 'fire' 
 data$fire[data$Name == 'CADCLIFFS'] = 'fire'
 data$fire[data$Name == 'STSAUV'] = 'no fire'
 data$fire[data$Name == 'WOND'] = 'no fire'
-head(data)
 
-data_density = read.csv('../data/mdi_stand_density.csv')
-data_density$fire[data_density$site == 'CAD'] = 'fire' 
-data_density$fire[data_density$site == 'CADCLIFFS'] = 'fire'
-data_density$fire[data_density$site == 'STSAUV'] = 'no fire'
-data_density$fire[data_density$site == 'WOND'] = 'no fire'
+data_density$fire[data_density$Name == 'CAD'] = 'fire' 
+data_density$fire[data_density$Name == 'CADCLIFFS'] = 'fire'
+data_density$fire[data_density$Name == 'STSAUV'] = 'no fire'
+data_density$fire[data_density$Name == 'WOND'] = 'no fire'
 
 ## site means
 data_group_by_Name = group_by(data, Name)
@@ -59,8 +90,26 @@ data_Name_means = summarise(data_group_by_Name,
 ## create an elevation factor
 data$elevation_fac[data$Name == 'CAD' | data$Name == 'STSAUV'] = 'high'
 data$elevation_fac[data$Name == 'CADCLIFFS' | data$Name == 'WOND'] = 'low'
-data_density$elevation_fac[data_density$site == 'CAD' | data_density$site == 'STSAUV'] = 'high'
-data_density$elevation_fac[data_density$site == 'CADCLIFFS' | data_density$site == 'WOND'] = 'low'
+data_density$elevation_fac[data_density$Name == 'CAD' | data_density$Name == 'STSAUV'] = 'high'
+data_density$elevation_fac[data_density$Name == 'CADCLIFFS' | data_density$Name == 'WOND'] = 'low'
+
+## reorder levels for elevation factor
+data$elevation_fac <- factor(data$elevation_fac, levels = c("low", "high"))
+
+## rename site labels to match manuscript
+data$Site[data$Name == "CAD"] = "CAD"
+data$Site[data$Name == "CADCLIFFS"] = "GOR"
+data$Site[data$Name == "STSAUV"] = "STS"
+data$Site[data$Name == "WOND"] = "WON"
+
+data_density$Site[data_density$Name == "CAD"] = "CAD"
+data_density$Site[data_density$Name == "CADCLIFFS"] = "GOR"
+data_density$Site[data_density$Name == "STSAUV"] = "STS"
+data_density$Site[data_density$Name == "WOND"] = "WON"
+
+## reorder levels of sites to match to increase from low to high elevation and no fire to fire
+data$Site <- factor(data$Site, levels = c("WON", "GOR", "STS", "CAD"))
+data_density$Site <- factor(data_density$Site, levels = c("WON", "GOR", "STS", "CAD"))
 
 ## create a generic variable set to pass to formula argument
 ind_variables = c('elevation_fac', 'fire')
@@ -70,28 +119,29 @@ dep_variables = c("log(Elevation)", "log(height)", "log(canopy)", "log(diam)",
                   "Ca_soil", "log(P_soil)", "K_soil", "Mg_soil", "log(Al_soil)", "log(Zn_soil)", 
                   "pH", "CEC", "C_soil", "N_soil", "log(CN_soil)", "asin(sqrt(0.01 * retention))")
 
-## fit models and explore results
+#### fit models and explore results ####
 
+## topography
 ### elevation
 Elevation_lm = lm(as.formula(paste("log(Elevation)",
                                    paste(ind_variables, collapse = "*"),
                                    sep = "~")), data = data)
 #plot(resid(Elevation_lm) ~ fitted(Elevation_lm))
 Anova(Elevation_lm)
-cld(emmeans(Elevation_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(Elevation_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = log(Elevation))) +
+ggplot(data = data, aes(x = Site, y = log(Elevation))) +
   geom_boxplot()
 
 ### slope
 Slope_lm = lm(as.formula(paste("Slope",
-                                   paste(ind_variables, collapse = "*"),
-                                   sep = "~")), data = data)
+                               paste(ind_variables, collapse = "*"),
+                               sep = "~")), data = data)
 #plot(resid(Slope_lm) ~ fitted(Slope_lm))
 Anova(Slope_lm)
-cld(emmeans(Slope_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(Slope_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = Slope)) +
+ggplot(data = data, aes(x = Site, y = Slope)) +
   geom_boxplot()
 
 ### aspect
@@ -112,98 +162,65 @@ watson.two.test(aspect_CADCLIFFS, aspect_STSAUV) # P < 0.1
 watson.two.test(aspect_CADCLIFFS, aspect_WOND) # P < 0.05
 watson.two.test(aspect_STSAUV, aspect_WOND) # P <0.01
 
-plot_aspect_CAD = plot.circular(aspect_CAD, main = 'CAD aspect')
-plot_aspect_CADCLIFFS = plot.circular(aspect_CADCLIFFS, main = 'CADCLIFFS aspect')
-plot_aspect_STSAUV = plot.circular(aspect_STSAUV, main = 'STSAUV aspect')
-plot_aspect_WOND = plot.circular(aspect_WOND, main = 'WOND aspect')
+jpeg(filename = "analyses/plots/plots_aspect.jpeg", width = 3000, height = 3000, units = 'px')
+par(mfrow = c(2, 2), cex.lab = 6, cex.main = 6, mar = c(5.5, 8.5, 5.5, 2.5))
 
+plot_aspect_CADCLIFFS = plot.circular(aspect_CADCLIFFS, main = 'Gorham Cliffs', 
+                                      ylab = "Fire", 
+                                      cex = 8, col = "#F8766D", pch = 16)
+plot_aspect_CAD = plot.circular(aspect_CAD, main = 'South Cadillac',
+                                cex = 8, col = "#F8766D", pch = 16)
+plot_aspect_WOND = plot.circular(aspect_WOND, main = 'Wonderland', 
+                                 ylab = "No Fire", xlab = "Low Elevation", 
+                                 cex = 8, col = "#00BFC4", pch = 16)
+plot_aspect_STSAUV = plot.circular(aspect_STSAUV, main = 'St. Sauveur', 
+                                   xlab = "High Elevation", 
+                                   cex = 8, col = "#00BFC4", pch = 16)
+
+dev.off()
+
+## allometry
 ### height
 height_lm = lm(as.formula(paste(dep_variables[2],
                                 paste(ind_variables, collapse = "*"),
                                 sep = "~")), data = data)
 #plot(resid(height_lm) ~ fitted(height_lm))
 Anova(height_lm)
-cld(emmeans(height_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(height_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = log(height))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+height_letters <- letters_log(y = data$height, .checkvar = "height")
 
-# height_lmer_cont = lmer(log(height) ~ Elevation * fire + (1|Name), data = data)
-# Anova(height_lmer_cont)
-# test(emtrends(height_lmer_cont, ~fire, var = 'Elevation'))
-
-# height_plot = ggplot(data = data, aes(x = Name, y = log(height), col = fire)) +
-#   theme(legend.position = "none", 
-#         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-#         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-#         axis.text.x=element_text(size=rel(2), colour = 'black'),
-#         axis.text.y=element_text(size=rel(2), colour = 'black'),
-#         panel.background = element_rect(fill = 'white', colour = 'black'),
-#         panel.grid.major = element_line(colour = "grey")) +
-#   geom_boxplot(outlier.color = NA, fill = 'white') +
-#   geom_dotplot(binaxis = 'y', binwidth = 0.07, stackdir = 'center', alpha = 0.5) +
-#   # scale_x_discrete(labels = c('Ambient', 'Added N')) +
-#   xlab('Site') +
-#   ylab(expression('ln(Height)'))
-# 
-# height_plot_elevation = ggplot(data = data, aes(x = Elevation, y = log(height), col = fire)) +
-#   theme(legend.position = "right", 
-#         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-#         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-#         axis.text.x=element_text(size=rel(2), colour = 'black'),
-#         axis.text.y=element_text(size=rel(2), colour = 'black'),
-#         panel.background = element_rect(fill = 'white', colour = 'black'),
-#         panel.grid.major = element_line(colour = "grey")) +
-#   geom_point(size = 6) +
-#   ylab(expression('ln(Height)'))
-# 
-# jpeg(filename = "plots/height_plot.jpeg", width = 1000, height = 600, units = 'px')
-# multiplot(height_plot, height_plot_elevation, cols = 2)
-# dev.off()
+(plot_height <- ggplot(data = data, aes(x = Site, y = height)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center',
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = height_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) +
+    scale_x_discrete(name = "Site") +
+    scale_y_continuous(name = "Height (m)") +
+    guides(fill = guide_legend("Fire History")))
 
 ### canopy
 canopy_lm = lm(as.formula(paste(dep_variables[3],
                                 paste(ind_variables, collapse = "*"),
                                 sep = "~")), data = data)
-#plot(resid(canopy_lm) ~ fitted(canopy_lm))
+# plot(resid(canopy_lm) ~ fitted(canopy_lm))
 anova(canopy_lm)
-cld(emmeans(canopy_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(canopy_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = log(canopy))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+canopy_letters <- letters_log(y = data$canopy, .checkvar = "canopy")
 
-# canopy_lmer_cont = lmer(log(canopy) ~ Elevation * fire + (1|Name), data = data)
-# Anova(canopy_lmer_cont)
-# test(emtrends(canopy_lmer_cont, ~fire, var = 'Elevation'))
-
-# canopy_plot = ggplot(data = data, aes(x = Name, y = log(canopy), col = fire)) +
-#   theme(legend.position = "none", 
-#         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-#         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-#         axis.text.x=element_text(size=rel(2), colour = 'black'),
-#         axis.text.y=element_text(size=rel(2), colour = 'black'),
-#         panel.background = element_rect(fill = 'white', colour = 'black'),
-#         panel.grid.major = element_line(colour = "grey")) +
-#   geom_boxplot(outlier.color = NA, fill = 'white') +
-#   geom_dotplot(binaxis = 'y', binwidth = 0.07, stackdir = 'center', alpha = 0.5) +
-#   # scale_x_discrete(labels = c('Ambient', 'Added N')) +
-#   xlab('Site') +
-#   ylab(expression('ln(Canopy)'))
-# 
-# canopy_plot_elevation = ggplot(data = data, aes(x = Elevation, y = log(canopy), col = fire)) +
-#   theme(legend.position = "right", 
-#         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-#         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-#         axis.text.x=element_text(size=rel(2), colour = 'black'),
-#         axis.text.y=element_text(size=rel(2), colour = 'black'),
-#         panel.background = element_rect(fill = 'white', colour = 'black'),
-#         panel.grid.major = element_line(colour = "grey")) +
-#   geom_point(size = 6) +
-#   ylab(expression('ln(Canopy)'))
-# 
-# jpeg(filename = "plots/canopy_plot.jpeg", width = 1000, height = 600, units = 'px')
-# multiplot(canopy_plot, canopy_plot_elevation, cols = 2)
-# dev.off()
+(plot_canopy <- ggplot(data = data, aes(x = Site, y = canopy)) + 
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = canopy_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    scale_y_continuous(name = "Canopy Spread (m)") + 
+    guides(fill = guide_legend("Fire History")))
 
 ### diam
 diam_lm = lm(as.formula(paste(dep_variables[4],
@@ -211,76 +228,65 @@ diam_lm = lm(as.formula(paste(dep_variables[4],
                               sep = "~")), data = data)
 #plot(resid(diam_lm) ~ fitted(diam_lm))
 anova(diam_lm)
-cld(emmeans(diam_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(diam_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = log(diam))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+diam_letters <- letters_log(y = data$diam, .checkvar = "diam")
 
-# diam_lmer_cont = lmer(log(diam) ~ Elevation * fire + (1|Name), data = data)
-# Anova(diam_lmer_cont)
-# test(emtrends(diam_lmer_cont, ~fire, var = 'Elevation'))
+(plot_diam <- ggplot(data = data, aes(x = Site, y = diam)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = diam_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    scale_y_continuous(name = "DBH (cm)") + 
+    guides(fill = guide_legend("Fire History")))
 
-# diam_plot = ggplot(data = data, aes(x = Name, y = log(diam), col = fire)) +
-#   theme(legend.position = "none", 
-#         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-#         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-#         axis.text.x=element_text(size=rel(2), colour = 'black'),
-#         axis.text.y=element_text(size=rel(2), colour = 'black'),
-#         panel.background = element_rect(fill = 'white', colour = 'black'),
-#         panel.grid.major = element_line(colour = "grey")) +
-#   geom_boxplot(outlier.color = NA, fill = 'white') +
-#   geom_dotplot(binaxis = 'y', binwidth = 0.07, stackdir = 'center', alpha = 0.5) +
-#   # scale_x_discrete(labels = c('Ambient', 'Added N')) +
-#   xlab('Site') +
-#   ylab(expression('ln(Diameter)'))
-# 
-# diam_plot_elevation = ggplot(data = data, aes(x = Elevation, y = log(diam), col = fire)) +
-#   theme(legend.position = "right", 
-#         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-#         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-#         axis.text.x=element_text(size=rel(2), colour = 'black'),
-#         axis.text.y=element_text(size=rel(2), colour = 'black'),
-#         panel.background = element_rect(fill = 'white', colour = 'black'),
-#         panel.grid.major = element_line(colour = "grey")) +
-#   geom_point(size = 6) +
-#   ylab(expression('ln(Diameter)'))
-# 
-# jpeg(filename = "plots/diam_plot.jpeg", width = 1000, height = 600, units = 'px')
-# multiplot(diam_plot, diam_plot_elevation, cols = 2)
-# dev.off()
+### density
+head(data_density)
+density_lm = lm(mean_distance ~ elevation_fac * fire, data = data_density)
+#plot(resid(density_lm) ~ fitted(density_lm))
+anova(density_lm)
+cld.emmGrid(emmeans(density_lm, ~elevation_fac * fire))
 
-### d13C
-d13C_lm = lm(as.formula(paste(dep_variables[5],
-                              paste(ind_variables, collapse = "*"),
-                              sep = "~")), data = data)
-#plot(resid(d13C_lm) ~ fitted(d13C_lm))
-anova(d13C_lm)
-cld(emmeans(d13C_lm, ~elevation_fac * fire))
+#### get pairwise letters for boxplot
+density_letters <- letters(df = data_density, y = data_density$mean_distance, .checkvar = "mean_distance")
 
-ggplot(data = data, aes(x = Name, y = (d13C))) +
-  geom_boxplot()
+(plot_density <- ggplot(data = data_density, aes(x = Site, y = mean_distance)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = density_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) +
+    scale_x_discrete(name = "Site") +
+    scale_y_continuous(name = "Stand Density") + 
+    guides(fill = guide_legend("Fire History")))
 
-### d15N
-d15N_lm = lm(as.formula(paste(dep_variables[6],
-                              paste(ind_variables, collapse = "*"),
-                              sep = "~")), data = data)
-#plot(resid(d15N_lm) ~ fitted(d15N_lm))
-anova(d15N_lm)
-cld(emmeans(d15N_lm, ~elevation_fac * fire))
+(plots_allometry <- plot_height + plot_canopy + plot_diam + plot_density + 
+    plot_layout(guides = 'collect'))
 
-ggplot(data = data, aes(x = Name, y = (d15N))) +
-  geom_boxplot()
-
+## foliar organics
 ### C_foliar
 C_foliar_lm = lm(as.formula(paste(dep_variables[7],
                                   paste(ind_variables, collapse = "*"),
                                   sep = "~")), data = data)
 #plot(resid(C_foliar_lm) ~ fitted(C_foliar_lm))
 anova(C_foliar_lm)
-cld(emmeans(C_foliar_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(C_foliar_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = (C_foliar))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+C_foliar_letters <- letters(y = data$C_foliar, .checkvar = "C_foliar")
+
+(plot_C_foliar <- ggplot(data = data, aes(x = Site, y = C_foliar)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 0.5, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = C_foliar_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    scale_y_continuous(name = "Foliar Carbon (%)") + 
+    guides(fill = FALSE))
 
 ### N_foliar
 N_foliar_lm = lm(as.formula(paste(dep_variables[8],
@@ -288,10 +294,22 @@ N_foliar_lm = lm(as.formula(paste(dep_variables[8],
                                   sep = "~")), data = data)
 #plot(resid(N_foliar_lm) ~ fitted(N_foliar_lm))
 anova(N_foliar_lm)
-cld(emmeans(N_foliar_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(N_foliar_lm, ~elevation_fac * fire))
 
-ggplot(data = subset(data, N_foliar < 5), aes(x = Name, y = (N_foliar))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+N_foliar_letters <- letters(y = data$N_foliar, .checkvar = "N_foliar")
+
+(plot_N_foliar <- ggplot(data = data, aes(x = Site, y = N_foliar)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 0.2, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = N_foliar_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    scale_y_continuous(name = "Foliar Nitrogen (%)") + 
+    theme(legend.position = "bottom", legend.title = element_text(size = 16), 
+          legend.text = element_text(size = 12)) +
+    guides(fill = guide_legend("Fire History")))
 
 ### CN_foliar
 CN_foliar_lm = lm(as.formula(paste(dep_variables[9],
@@ -299,21 +317,45 @@ CN_foliar_lm = lm(as.formula(paste(dep_variables[9],
                                    sep = "~")), data = data)
 #plot(resid(CN_foliar_lm) ~ fitted(CN_foliar_lm))
 anova(CN_foliar_lm)
-cld(emmeans(CN_foliar_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(CN_foliar_lm, ~elevation_fac * fire))
 
-ggplot(data = subset(data, N_foliar < 5), aes(x = Name, y = (CN_foliar))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+CN_foliar_letters <- letters(y = data$CN_foliar, .checkvar = "CN_foliar")
 
+(plot_CN_foliar <- ggplot(data = data, aes(x = Site, y = CN_foliar)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 0.7, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = CN_foliar_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    scale_y_continuous(name = "Foliar Carbon/Nitrogen") + 
+    guides(fill = FALSE))
+
+(plots_foliar_organics <- plot_C_foliar + plot_N_foliar + plot_CN_foliar + 
+    plot_layout(guides = 'keep'))
+
+## foliar inorganics
 ### Ca_foliar
 Ca_foliar_lm = lm(as.formula(paste(dep_variables[10],
                                    paste(ind_variables, collapse = "*"),
                                    sep = "~")), data = data)
 #plot(resid(Ca_foliar_lm) ~ fitted(Ca_foliar_lm))
 anova(Ca_foliar_lm)
-cld(emmeans(Ca_foliar_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(Ca_foliar_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = (Ca_foliar))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+Ca_foliar_letters <- letters(y = data$Ca_foliar, .checkvar = "Ca_foliar")
+
+(plot_Ca_foliar <- ggplot(data = data, aes(x = Site, y = Ca_foliar)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = Ca_foliar_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression("Foliar Calcium (g g"^{-1}*")")) + 
+    guides(fill = FALSE))
 
 ### P_foliar
 P_foliar_lm = lm(as.formula(paste(dep_variables[11],
@@ -321,10 +363,20 @@ P_foliar_lm = lm(as.formula(paste(dep_variables[11],
                                   sep = "~")), data = data)
 #plot(resid(P_foliar_lm) ~ fitted(P_foliar_lm))
 anova(P_foliar_lm)
-cld(emmeans(P_foliar_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(P_foliar_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = (P_foliar))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+P_foliar_letters <- letters_log(y = data$P_foliar, .checkvar = "P_foliar")
+
+(plot_P_foliar <- ggplot(data = data, aes(x = Site, y = P_foliar)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = P_foliar_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression("Foliar Phosphorus (g g"^{-1}*")")) + 
+    guides(fill = FALSE))
 
 ### K_foliar
 K_foliar_lm = lm(as.formula(paste(dep_variables[12],
@@ -332,10 +384,20 @@ K_foliar_lm = lm(as.formula(paste(dep_variables[12],
                                   sep = "~")), data = data)
 #plot(resid(K_foliar_lm) ~ fitted(K_foliar_lm))
 anova(K_foliar_lm)
-cld(emmeans(K_foliar_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(K_foliar_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = (K_foliar))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+K_foliar_letters <- letters_log(y = data$K_foliar, .checkvar = "K_foliar")
+
+(plot_K_foliar <- ggplot(data = data, aes(x = Site, y = K_foliar)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = K_foliar_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression("Foliar Potassium (g g"^{-1}*")")) + 
+    guides(fill = FALSE))
 
 ### Mg_foliar
 Mg_foliar_lm = lm(as.formula(paste(dep_variables[13],
@@ -343,10 +405,20 @@ Mg_foliar_lm = lm(as.formula(paste(dep_variables[13],
                                    sep = "~")), data = data)
 #plot(resid(Mg_foliar_lm) ~ fitted(Mg_foliar_lm))
 anova(Mg_foliar_lm)
-cld(emmeans(Mg_foliar_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(Mg_foliar_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = (Mg_foliar))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+Mg_foliar_letters <- letters(y = data$Mg_foliar, .checkvar = "Mg_foliar")
+
+(plot_Mg_foliar <- ggplot(data = data, aes(x = Site, y = Mg_foliar)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = Mg_foliar_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression("Foliar Magnesium (g g"^{-1}*")")) + 
+    guides(fill = FALSE))
 
 ### Al_foliar
 Al_foliar_lm = lm(as.formula(paste(dep_variables[14],
@@ -354,10 +426,22 @@ Al_foliar_lm = lm(as.formula(paste(dep_variables[14],
                                    sep = "~")), data = data)
 #plot(resid(Al_foliar_lm) ~ fitted(Al_foliar_lm))
 anova(Al_foliar_lm)
-cld(emmeans(Al_foliar_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(Al_foliar_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = (Al_foliar))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+Al_foliar_letters <- letters(y = data$Al_foliar, .checkvar = "Al_foliar")
+
+(plot_Al_foliar <- ggplot(data = data, aes(x = Site, y = Al_foliar)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = Al_foliar_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression("Foliar Aluminum (g g"^{-1}*")")) + 
+    theme(legend.position = "bottom", legend.title = element_text(size = 16), 
+          legend.text = element_text(size = 12)) +
+    guides(fill = guide_legend("Fire History")))
 
 ### Zn_foliar
 Zn_foliar_lm = lm(as.formula(paste(dep_variables[15],
@@ -365,109 +449,96 @@ Zn_foliar_lm = lm(as.formula(paste(dep_variables[15],
                                    sep = "~")), data = data)
 #plot(resid(Zn_foliar_lm) ~ fitted(Zn_foliar_lm))
 anova(Zn_foliar_lm)
-cld(emmeans(Zn_foliar_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(Zn_foliar_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = (Zn_foliar))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+Zn_foliar_letters <- letters_log(y = data$Zn_foliar, .checkvar = "Zn_foliar")
 
-### Ca_soil
-Ca_soil_lm = lm(as.formula(paste(dep_variables[16],
-                                 paste(ind_variables, collapse = "*"),
-                                 sep = "~")), data = data)
-#plot(resid(Ca_soil_lm) ~ fitted(Ca_soil_lm))
-anova(Ca_soil_lm)
-cld(emmeans(Ca_soil_lm, ~elevation_fac * fire))
+(plot_Zn_foliar <- ggplot(data = data, aes(x = Site, y = Zn_foliar)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = Zn_foliar_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression("Foliar Zinc (g g"^{-1}*")")) + 
+    guides(fill = FALSE))
 
-ggplot(data = data, aes(x = Name, y = (Ca_soil))) +
-  geom_boxplot()
+(plots_foliar_inorganics <- plot_Ca_foliar + plot_P_foliar + plot_K_foliar + 
+    plot_Mg_foliar + plot_Al_foliar + plot_Zn_foliar +
+    plot_layout(guides = 'keep'))
 
-### P_soil
-P_soil_lm = lm(as.formula(paste(dep_variables[17],
-                                paste(ind_variables, collapse = "*"),
-                                sep = "~")), data = data)
-#plot(resid(P_soil_lm) ~ fitted(P_soil_lm))
-anova(P_soil_lm)
-cld(emmeans(P_soil_lm, ~elevation_fac * fire))
+## foliar isotopes
+### d13C
+d13C_lm = lm(as.formula(paste(dep_variables[5],
+                              paste(ind_variables, collapse = "*"),
+                              sep = "~")), data = data)
+#plot(resid(d13C_lm) ~ fitted(d13C_lm))
+anova(d13C_lm)
+cld.emmGrid(emmeans(d13C_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = (P_soil))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+d13C_abs_max <- max(data$d13C, na.rm = TRUE)
+d13C_letters <- data %>% group_by(Site) %>% 
+  summarise(yaxis = max(d13C, na.rm = TRUE) - 0.02 * d13C_abs_max) # get the highest point for each species
+d13C_hsd <- HSD.test(aov(d13C ~ Site, data), "Site", group = TRUE) # get Tukey HSD results
+d13C_letters$group <- d13C_hsd$groups$groups
 
-### K_soil
-K_soil_lm = lm(as.formula(paste(dep_variables[18],
-                                paste(ind_variables, collapse = "*"),
-                                sep = "~")), data = data)
-#plot(resid(K_soil_lm) ~ fitted(K_soil_lm))
-anova(K_soil_lm)
-cld(emmeans(K_soil_lm, ~elevation_fac * fire))
+(plot_d13C <- ggplot(data = data, aes(x = Site, y = d13C)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 0.8, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = d13C_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression(delta^{"13"}*"C (‰)")) + 
+    guides(fill = guide_legend("Fire History")))
 
-ggplot(data = data, aes(x = Name, y = (K_soil))) +
-  geom_boxplot()
+### d15N
+d15N_lm = lm(as.formula(paste(dep_variables[6],
+                              paste(ind_variables, collapse = "*"),
+                              sep = "~")), data = data)
+#plot(resid(d15N_lm) ~ fitted(d15N_lm))
+anova(d15N_lm)
+cld.emmGrid(emmeans(d15N_lm, ~elevation_fac * fire))
 
-### Mg_soil
-Mg_soil_lm = lm(as.formula(paste(dep_variables[19],
-                                 paste(ind_variables, collapse = "*"),
-                                 sep = "~")), data = data)
-#plot(resid(Mg_soil_lm) ~ fitted(Mg_soil_lm))
-anova(Mg_soil_lm)
-cld(emmeans(Mg_soil_lm, ~elevation_fac * fire))
+#### get pairwise letters for boxplot
+d15N_letters <- letters(y = data$d15N, .checkvar = "d15N")
 
-ggplot(data = data, aes(x = Name, y = (Mg_soil))) +
-  geom_boxplot()
+(plot_d15N <- ggplot(data = data, aes(x = Site, y = d15N)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 0.8, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = d15N_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression(delta^{"15"}*"N (‰)")) + 
+    guides(fill = guide_legend("Fire History")))
 
-### Al_soil
-Al_soil_lm = lm(as.formula(paste(dep_variables[20],
-                                 paste(ind_variables, collapse = "*"),
-                                 sep = "~")), data = data)
-#plot(resid(Al_soil_lm) ~ fitted(Al_soil_lm))
-anova(Al_soil_lm)
-cld(emmeans(Al_soil_lm, ~elevation_fac * fire))
+(plots_foliar_isotopes <- plot_d13C + plot_d15N +
+    plot_layout(guides = 'collect'))
 
-ggplot(data = data, aes(x = Name, y = (Al_soil))) +
-  geom_boxplot()
-
-### Zn_soil
-Zn_soil_lm = lm(as.formula(paste(dep_variables[21],
-                                 paste(ind_variables, collapse = "*"),
-                                 sep = "~")), data = data)
-#plot(resid(Zn_soil_lm) ~ fitted(Zn_soil_lm))
-anova(Zn_soil_lm)
-cld(emmeans(Zn_soil_lm, ~elevation_fac * fire))
-
-ggplot(data = data, aes(x = Name, y = (Zn_soil))) +
-  geom_boxplot()
-
-### pH
-pH_lm = lm(as.formula(paste(dep_variables[22],
-                            paste(ind_variables, collapse = "*"),
-                            sep = "~")), data = data)
-#plot(resid(pH_lm) ~ fitted(pH_lm))
-anova(pH_lm)
-cld(emmeans(pH_lm, ~elevation_fac * fire))
-
-ggplot(data = data, aes(x = Name, y = (pH))) +
-  geom_boxplot()
-
-### CEC
-CEC_lm = lm(as.formula(paste(dep_variables[23],
-                             paste(ind_variables, collapse = "*"),
-                             sep = "~")), data = data)
-#plot(resid(CEC_lm) ~ fitted(CEC_lm))
-anova(CEC_lm)
-cld(emmeans(CEC_lm, ~elevation_fac * fire))
-
-ggplot(data = data, aes(x = Name, y = (CEC))) +
-  geom_boxplot()
-
+## soil organics
 ### C_soil
 C_soil_lm = lm(as.formula(paste(dep_variables[24],
                                 paste(ind_variables, collapse = "*"),
                                 sep = "~")), data = data)
 #plot(resid(C_soil_lm) ~ fitted(C_soil_lm))
 anova(C_soil_lm)
-cld(emmeans(C_soil_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(C_soil_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = (C_soil))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+C_soil_letters <- letters(y = data$C_soil, .checkvar = "C_soil")
+
+(plot_C_soil <- ggplot(data = data, aes(x = Site, y = C_soil)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = C_soil_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression("Soil Carbon (g g"^{-1}*")")) + 
+    guides(fill = FALSE))
 
 ### N_soil
 N_soil_lm = lm(as.formula(paste(dep_variables[25],
@@ -475,10 +546,22 @@ N_soil_lm = lm(as.formula(paste(dep_variables[25],
                                 sep = "~")), data = data)
 #plot(resid(N_soil_lm) ~ fitted(N_soil_lm))
 anova(N_soil_lm)
-cld(emmeans(N_soil_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(N_soil_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = (N_soil))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+N_soil_letters <- letters(y = data$N_soil, .checkvar = "N_soil")
+
+(plot_N_soil <- ggplot(data = data, aes(x = Site, y = N_soil)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = N_soil_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) +
+    scale_x_discrete(name = "Site") +
+    ylab(expression("Soil Nitrogen (g g"^{-1}*")")) + 
+    theme(legend.position = "bottom", legend.title = element_text(size = 16), 
+          legend.text = element_text(size = 12)) +
+    guides(fill = guide_legend("Fire History")))
 
 ### CN_soil
 CN_soil_lm = lm(as.formula(paste(dep_variables[26],
@@ -486,92 +569,330 @@ CN_soil_lm = lm(as.formula(paste(dep_variables[26],
                                  sep = "~")), data = data)
 #plot(resid(CN_soil_lm) ~ fitted(CN_soil_lm))
 anova(CN_soil_lm)
-cld(emmeans(CN_soil_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(CN_soil_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = (CN_soil))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+CN_soil_letters <- letters_log(y = data$CN_soil, .checkvar = "CN_soil")
 
+(plot_CN_soil <- ggplot(data = data, aes(x = Site, y = CN_soil)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = CN_soil_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    scale_y_continuous(name = "Soil Carbon/Nitrogen") + 
+    guides(fill = FALSE))
+
+(plots_soil_organics <- plot_C_soil + plot_N_soil + plot_CN_soil + 
+    plot_layout(guides = 'keep'))
+
+## soil inorganics
+### Ca_soil
+Ca_soil_lm = lm(as.formula(paste(dep_variables[16],
+                                 paste(ind_variables, collapse = "*"),
+                                 sep = "~")), data = data)
+#plot(resid(Ca_soil_lm) ~ fitted(Ca_soil_lm))
+anova(Ca_soil_lm)
+cld.emmGrid(emmeans(Ca_soil_lm, ~elevation_fac * fire))
+
+#### get pairwise letters for boxplot
+Ca_soil_letters <- letters(y = data$Ca_soil, .checkvar = "Ca_soil")
+
+(plot_Ca_soil <- ggplot(data = data, aes(x = Site, y = Ca_soil)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = Ca_soil_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression("Soil Calcium (g g"^{-1}*")")) + 
+    guides(fill = FALSE))
+
+### P_soil
+P_soil_lm = lm(as.formula(paste(dep_variables[17],
+                                paste(ind_variables, collapse = "*"),
+                                sep = "~")), data = data)
+#plot(resid(P_soil_lm) ~ fitted(P_soil_lm))
+anova(P_soil_lm)
+cld.emmGrid(emmeans(P_soil_lm, ~elevation_fac * fire))
+
+#### get pairwise letters for boxplot
+P_soil_letters <- letters_log(y = data$P_soil, .checkvar = "P_soil")
+
+(plot_P_soil <- ggplot(data = data, aes(x = Site, y = P_soil)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = P_soil_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression("Soil Phosphorus (g g"^{-1}*")")) + 
+    guides(fill = FALSE))
+
+### K_soil
+K_soil_lm = lm(as.formula(paste(dep_variables[18],
+                                paste(ind_variables, collapse = "*"),
+                                sep = "~")), data = data)
+#plot(resid(K_soil_lm) ~ fitted(K_soil_lm))
+anova(K_soil_lm)
+cld.emmGrid(emmeans(K_soil_lm, ~elevation_fac * fire))
+
+#### get pairwise letters for boxplot
+K_soil_letters <- letters(y = data$K_soil, .checkvar = "K_soil")
+
+(plot_K_soil <- ggplot(data = data, aes(x = Site, y = K_soil)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = K_soil_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression("Soil Potassium (g g"^{-1}*")")) + 
+    guides(fill = FALSE))
+
+### Mg_soil
+Mg_soil_lm = lm(as.formula(paste(dep_variables[19],
+                                 paste(ind_variables, collapse = "*"),
+                                 sep = "~")), data = data)
+#plot(resid(Mg_soil_lm) ~ fitted(Mg_soil_lm))
+anova(Mg_soil_lm)
+cld.emmGrid(emmeans(Mg_soil_lm, ~elevation_fac * fire))
+
+#### get pairwise letters for boxplot
+Mg_soil_letters <- letters(y = data$Mg_soil, .checkvar = "Mg_soil")
+
+(plot_Mg_soil <- ggplot(data = data, aes(x = Site, y = Mg_soil)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = Mg_soil_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression("Soil Magnesium (g g"^{-1}*")")) + 
+    guides(fill = FALSE))
+
+### Al_soil
+Al_soil_lm = lm(as.formula(paste(dep_variables[20],
+                                 paste(ind_variables, collapse = "*"),
+                                 sep = "~")), data = data)
+#plot(resid(Al_soil_lm) ~ fitted(Al_soil_lm))
+anova(Al_soil_lm)
+cld.emmGrid(emmeans(Al_soil_lm, ~elevation_fac * fire))
+
+#### get pairwise letters for boxplot
+Al_soil_letters <- letters_log(y = data$Al_soil, .checkvar = "Al_soil")
+
+(plot_Al_soil <- ggplot(data = data, aes(x = Site, y = Al_soil)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = Al_soil_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression("Soil Aluminum (g g"^{-1}*")")) + 
+    theme(legend.position = "bottom", legend.title = element_text(size = 16), 
+          legend.text = element_text(size = 12)) +
+    guides(fill = guide_legend("Fire History")))
+
+### Zn_soil
+Zn_soil_lm = lm(as.formula(paste(dep_variables[21],
+                                 paste(ind_variables, collapse = "*"),
+                                 sep = "~")), data = data)
+#plot(resid(Zn_soil_lm) ~ fitted(Zn_soil_lm))
+anova(Zn_soil_lm)
+cld.emmGrid(emmeans(Zn_soil_lm, ~elevation_fac * fire))
+
+#### get pairwise letters for boxplot
+Zn_soil_letters <- letters_log(y = data$Zn_soil, .checkvar = "Zn_soil")
+
+(plot_Zn_soil <- ggplot(data = data, aes(x = Site, y = Zn_soil)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = Zn_soil_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression("Soil Zinc (g g"^{-1}*")")) + 
+    guides(fill = FALSE))
+
+(plots_soil_inorganics <- plot_Ca_soil + plot_P_soil + plot_K_soil + 
+    plot_Mg_soil + plot_Al_soil + plot_Zn_soil +
+    plot_layout(guides = "keep"))
+
+## soil characteristics
+### pH
+pH_lm = lm(as.formula(paste(dep_variables[22],
+                            paste(ind_variables, collapse = "*"),
+                            sep = "~")), data = data)
+#plot(resid(pH_lm) ~ fitted(pH_lm))
+anova(pH_lm)
+cld.emmGrid(emmeans(pH_lm, ~elevation_fac * fire))
+
+#### get pairwise letters for boxplot
+pH_letters <- letters(y = data$pH, .checkvar = "pH")
+
+(plot_pH <- ggplot(data = data, aes(x = Site, y = pH)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = pH_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    scale_y_continuous(name = "Soil pH") + 
+    guides(fill = FALSE))
+
+### CEC
+CEC_lm = lm(as.formula(paste(dep_variables[23],
+                             paste(ind_variables, collapse = "*"),
+                             sep = "~")), data = data)
+#plot(resid(CEC_lm) ~ fitted(CEC_lm))
+anova(CEC_lm)
+cld.emmGrid(emmeans(CEC_lm, ~elevation_fac * fire))
+
+#### get pairwise letters for boxplot
+CEC_letters <- letters(y = data$CEC, .checkvar = "CEC")
+
+(plot_CEC <- ggplot(data = data, aes(x = Site, y = CEC)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = CEC_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    ylab(expression("Soil CEC (cmol"[c]*" kg"^{-1}*")")) + 
+    theme(legend.position = "bottom", legend.title = element_text(size = 16), 
+          legend.text = element_text(size = 12)) +
+    guides(fill = guide_legend("Fire History")))
+
+## soil characteristics
 ### retention
 retention_lm = lm(as.formula(paste(dep_variables[27],
                                    paste(ind_variables, collapse = "*"),
                                    sep = "~")), data = data)
 #plot(resid(retention_lm) ~ fitted(retention_lm))
 anova(retention_lm)
-cld(emmeans(retention_lm, ~elevation_fac * fire))
+cld.emmGrid(emmeans(retention_lm, ~elevation_fac * fire))
 
-ggplot(data = data, aes(x = Name, y = (retention))) +
-  geom_boxplot()
+#### get pairwise letters for boxplot
+retention_abs_max <- max(data$retention, na.rm = TRUE)
+retention_letters <- data %>% group_by(Site) %>% 
+  summarise(yaxis = max(retention, na.rm = TRUE) + 0.05 * retention_abs_max) # get the highest point for each species
+retention_hsd <- HSD.test(aov(asin(sqrt(0.01 * retention)) ~ Site, data), "Site", group = TRUE) # get Tukey HSD results
+retention_letters$group <- retention_hsd$groups$groups
 
-### density
-head(data_density)
-density_lm = lm(mean_distance ~ elevation_fac * fire, data = data_density)
-#plot(resid(density_lm) ~ fitted(density_lm))
-anova(density_lm)
-cld(emmeans(density_lm, ~elevation_fac * fire))
+(plot_retention <- ggplot(data = data, aes(x = Site, y = retention)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', 
+                 dotsize = 1, aes(fill = fire)) +
+    geom_boxplot(outlier.color = NA, fill = NA) +
+    geom_text(data = retention_letters, aes(y = yaxis, label = group)) +
+    theme_few(base_size = 16) + 
+    scale_x_discrete(name = "Site") +
+    scale_y_continuous(name = "Soil Water Retention (%)") + 
+    guides(fill = FALSE))
 
-ggplot(data = data_density, aes(x = site, y = (mean_distance))) +
-  geom_boxplot()
+(plots_soil_characteristics <- plot_retention + plot_CEC + plot_pH +
+    plot_layout(guides = "keep", ncol = 3, nrow = 1))
 
-# rmarkdown::render("mdi_pitchpine_analyses.R", output_format = "pdf_document")
+#### tables and posthoc ####
 
-## tables and posthoc
-### soil organics
-write.csv(cbind(as.matrix(anova(C_soil_lm)[, c(1, 4, 5)]), 
-      as.matrix(anova(N_soil_lm)[, c(4, 5)]), 
-      as.matrix(anova(CN_soil_lm)[, c(4, 5)])),
-      'tables/soil_organics.csv')
+### topography
+topography <- data %>% group_by(Name) %>% summarise_at(vars(latitude, longitude, Elevation, Slope, Aspect), mean, na.rm = TRUE)
+write.csv(topography, "analyses/tables/topography.csv")
 
-(summary(emmeans(C_soil_lm, ~fire))[1,2] - summary(emmeans(C_soil_lm, ~fire))[2,2])/ summary(emmeans(C_soil_lm, ~fire))[2,2]
-(summary(emmeans(C_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(C_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(C_soil_lm, ~elevation_fac))[2,2]
-(summary(emmeans(CN_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(CN_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(CN_soil_lm, ~elevation_fac))[2,2]
+### allometry
+write.csv(cbind(as.matrix(anova(height_lm)[, c(1, 4, 5)]), 
+                as.matrix(anova(canopy_lm)[, c(4, 5)]), 
+                as.matrix(anova(diam_lm)[, c(4, 5)]),
+                as.matrix(anova(density_lm)[, c(4, 5)])),
+          'analyses/tables/allometry.csv')
 
-write.csv(cbind(as.matrix(anova(Ca_soil_lm)[, c(1, 4, 5)]), 
-                as.matrix(anova(P_soil_lm)[, c(4, 5)]), 
-                as.matrix(anova(K_soil_lm)[, c(4, 5)]),
-                as.matrix(anova(Mg_soil_lm)[, c(4, 5)]),
-                as.matrix(anova(Al_soil_lm)[, c(4, 5)]),
-                as.matrix(anova(Zn_soil_lm)[, c(4, 5)])),
-          'tables/soil_inorganics.csv')
+(summary(emmeans(canopy_lm, ~elevation_fac))[1,2] - summary(emmeans(canopy_lm, ~elevation_fac))[2,2])/ summary(emmeans(canopy_lm, ~elevation_fac))[2,2]
 
-(summary(emmeans(K_soil_lm, ~fire))[1,2] - summary(emmeans(K_soil_lm, ~fire))[2,2])/ summary(emmeans(K_soil_lm, ~fire))[2,2]
-(summary(emmeans(Ca_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(Ca_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(Ca_soil_lm, ~elevation_fac))[2,2]
-
-write.csv(as.matrix(anova(retention_lm)[, c(1, 4, 5)]),
-          'tables/retention.csv')
-
+### foliar organics
 write.csv(cbind(as.matrix(anova(C_foliar_lm)[, c(1, 4, 5)]), 
                 as.matrix(anova(N_foliar_lm)[, c(4, 5)]), 
                 as.matrix(anova(CN_foliar_lm)[, c(4, 5)])),
-          'tables/foliar_cn.csv')
+          'analyses/tables/foliar_cn.csv')
 
-write.csv(cbind(as.matrix(anova(d13C_lm)[, c(1, 4, 5)]), 
-                as.matrix(anova(d15N_lm)[, c(4, 5)])),
-          'tables/foliar_isotope.csv')
-
-(summary(emmeans(d13C_lm, ~elevation_fac))[1,2] - summary(emmeans(d13C_lm, ~elevation_fac))[2,2])/ summary(emmeans(d13C_lm, ~elevation_fac))[2,2]
-
+### foliar inorganics
 write.csv(cbind(as.matrix(anova(Ca_foliar_lm)[, c(1, 4, 5)]), 
                 as.matrix(anova(P_foliar_lm)[, c(4, 5)]), 
                 as.matrix(anova(K_foliar_lm)[, c(4, 5)]),
                 as.matrix(anova(Mg_foliar_lm)[, c(4, 5)]),
                 as.matrix(anova(Al_foliar_lm)[, c(4, 5)]),
                 as.matrix(anova(Zn_foliar_lm)[, c(4, 5)])),
-          'tables/foliar_inorganics.csv')
+          'analyses/tables/foliar_inorganics.csv')
 
 (summary(emmeans(P_foliar_lm, ~fire))[1,2] - summary(emmeans(P_foliar_lm, ~fire))[2,2])/ summary(emmeans(P_foliar_lm, ~fire))[2,2]
 (summary(emmeans(K_foliar_lm, ~fire))[1,2] - summary(emmeans(K_foliar_lm, ~fire))[2,2])/ summary(emmeans(K_foliar_lm, ~fire))[2,2]
 (summary(emmeans(Ca_foliar_lm, ~elevation_fac))[1,2] - summary(emmeans(Ca_foliar_lm, ~elevation_fac))[2,2])/ summary(emmeans(Ca_foliar_lm, ~elevation_fac))[2,2]
 (summary(emmeans(Zn_foliar_lm, ~elevation_fac))[1,2] - summary(emmeans(Zn_foliar_lm, ~elevation_fac))[2,2])/ summary(emmeans(Zn_foliar_lm, ~elevation_fac))[2,2]
 
-write.csv(cbind(as.matrix(anova(height_lm)[, c(1, 4, 5)]), 
-                as.matrix(anova(canopy_lm)[, c(4, 5)]), 
-                as.matrix(anova(diam_lm)[, c(4, 5)])),
-          'tables/allometry.csv')
+### foliar isotopes
+write.csv(cbind(as.matrix(anova(d13C_lm)[, c(1, 4, 5)]), 
+                as.matrix(anova(d15N_lm)[, c(4, 5)])),
+          'analyses/tables/foliar_isotope.csv')
 
-(summary(emmeans(canopy_lm, ~elevation_fac))[1,2] - summary(emmeans(canopy_lm, ~elevation_fac))[2,2])/ summary(emmeans(canopy_lm, ~elevation_fac))[2,2]
+(summary(emmeans(d13C_lm, ~elevation_fac))[1,2] - summary(emmeans(d13C_lm, ~elevation_fac))[2,2])/ summary(emmeans(d13C_lm, ~elevation_fac))[2,2]
 
-write.csv(anova(density_lm)[, c(1, 4, 5)],
-          'tables/density.csv')
+### soil organics
+setwd("~/Desktop/work/Smith Lab/mdi_pitchpine-master")
+write.csv(cbind(as.matrix(anova(C_soil_lm)[, c(1, 4, 5)]), 
+                as.matrix(anova(N_soil_lm)[, c(4, 5)]), 
+                as.matrix(anova(CN_soil_lm)[, c(4, 5)])),
+          'analyses/tables/soil_organics.csv')
 
-(summary(emmeans(density_lm, ~elevation_fac))[1,2] - summary(emmeans(density_lm, ~elevation_fac))[2,2])/ summary(emmeans(density_lm, ~elevation_fac))[2,2]
+(summary(emmeans(C_soil_lm, ~fire))[1,2] - summary(emmeans(C_soil_lm, ~fire))[2,2])/ summary(emmeans(C_soil_lm, ~fire))[2,2]
+(summary(emmeans(C_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(C_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(C_soil_lm, ~elevation_fac))[2,2]
+(summary(emmeans(CN_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(CN_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(CN_soil_lm, ~elevation_fac))[2,2]
+
+### soil inorganics
+write.csv(cbind(as.matrix(anova(Ca_soil_lm)[, c(1, 4, 5)]), 
+                as.matrix(anova(P_soil_lm)[, c(4, 5)]), 
+                as.matrix(anova(K_soil_lm)[, c(4, 5)]),
+                as.matrix(anova(Mg_soil_lm)[, c(4, 5)]),
+                as.matrix(anova(Al_soil_lm)[, c(4, 5)]),
+                as.matrix(anova(Zn_soil_lm)[, c(4, 5)])),
+          'analyses/tables/soil_inorganics.csv')
+
+(summary(emmeans(K_soil_lm, ~fire))[1,2] - summary(emmeans(K_soil_lm, ~fire))[2,2])/ summary(emmeans(K_soil_lm, ~fire))[2,2]
+(summary(emmeans(Ca_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(Ca_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(Ca_soil_lm, ~elevation_fac))[2,2]
+
+## soil characteristics
+write.csv(cbind(as.matrix(anova(retention_lm)[, c(1, 4, 5)]), 
+                as.matrix(anova(pH_lm)[, c(4, 5)]), 
+                as.matrix(anova(CEC_lm)[, c(4, 5)])),
+          'analyses/tables/soil_char.csv')
+
+#### save graphs ####
+
+## allometry
+ggsave("analyses/plots/plots_allometry.jpeg", plot = plots_allometry,
+       width = 29, height = 18, units = "cm")
+
+## foliar organics
+ggsave("analyses/plots/plots_foliar_organics.jpeg", plot = plots_foliar_organics,
+       width = 29, height = 18, units = "cm")
+
+## foliar inorganics
+ggsave("analyses/plots/plots_foliar_inorganics.jpeg", plot = plots_foliar_inorganics,
+       width = 29, height = 18, units = "cm")
+
+## foliar isotopes
+ggsave("analyses/plots/plots_foliar_isotopes.jpeg", plot = plots_foliar_isotopes,
+       width = 29, height = 18, units = "cm")
+
+## soil organics
+ggsave("analyses/plots/plots_soil_organics.jpeg", plot = plots_soil_organics,
+       width = 29, height = 18, units = "cm")
+
+## soil inorganics
+ggsave("analyses/plots/plots_soil_inorganics.jpeg", plot = plots_soil_inorganics,
+       width = 29, height = 18, units = "cm")
+
+## soil characteristics
+ggsave("analyses/plots/plots_soil_characteristics.jpeg", plot = plots_soil_characteristics,
+       width = 29, height = 18, units = "cm")
+
 
