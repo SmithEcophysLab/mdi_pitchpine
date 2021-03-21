@@ -9,6 +9,7 @@ colnames(foliar) = c('ID', 'Name', 'Ca_foliar', 'P_foliar',
 biophysical = read.csv('raw/pitchpine_mdi_biophysical.csv', skip = 1)[, c(1:2, 4:6)]
 isotope = read.csv('raw/pitchpine_mdi_isotope.csv')[, 1:6]
 colnames(isotope) = c('ID', 'Name', 'd13C', 'd15N', 'C_foliar', 'N_foliar')
+isotope[isotope$N_foliar > 15,]$N_foliar = NA
 retention = read.csv('raw/pitchpine_mdi_moistretent.csv', skip = 1)[, c(1, 2, 7)]
 colnames(retention) = c('ID', 'Name', 'retention')
 retention$retention = as.numeric(gsub("[\\%,]", "", retention$retention))
