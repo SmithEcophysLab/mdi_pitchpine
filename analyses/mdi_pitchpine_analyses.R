@@ -159,22 +159,23 @@ aspect_WOND = circular(data$Aspect[data$Name == 'WOND'],
 watson.two.test(aspect_CAD, aspect_CADCLIFFS) # P >0.1
 watson.two.test(aspect_CAD, aspect_STSAUV) # P < 0.001
 watson.two.test(aspect_CAD, aspect_WOND) # P < 0.05
-watson.two.test(aspect_CADCLIFFS, aspect_STSAUV) # P < 0.1
+watson.two.test(aspect_CADCLIFFS, aspect_STSAUV) # P < 0.01
 watson.two.test(aspect_CADCLIFFS, aspect_WOND) # P < 0.05
 watson.two.test(aspect_STSAUV, aspect_WOND) # P <0.01
 
-jpeg(filename = "plots/plots_aspect.jpeg", width = 3000, height = 3000, units = 'px')
+jpeg(filename = "plots/plots_aspect.jpeg", width = 3000, 
+     height = 3000, units = 'px')
 par(mfrow = c(2, 2), cex.lab = 6, cex.main = 6, mar = c(5.5, 8.5, 5.5, 2.5))
 
-plot_aspect_CADCLIFFS = plot.circular(aspect_CADCLIFFS, main = 'Gorham Cliffs', 
+plot_aspect_CADCLIFFS = plot.circular(aspect_CADCLIFFS, main = 'Gorham Cliffs (A)', 
                                       ylab = "Fire", 
                                       cex = 8, col = "red", pch = 16)
-plot_aspect_CAD = plot.circular(aspect_CAD, main = 'South Cadillac',
+plot_aspect_CAD = plot.circular(aspect_CAD, main = 'South Cadillac (A)',
                                 cex = 8, col = "red", pch = 17)
-plot_aspect_WOND = plot.circular(aspect_WOND, main = 'Wonderland', 
+plot_aspect_WOND = plot.circular(aspect_WOND, main = 'Wonderland (B)', 
                                  ylab = "No Fire", xlab = "Low Elevation", 
                                  cex = 8, col = "blue", pch = 16)
-plot_aspect_STSAUV = plot.circular(aspect_STSAUV, main = 'St. Sauveur', 
+plot_aspect_STSAUV = plot.circular(aspect_STSAUV, main = 'St. Sauveur (C)', 
                                    xlab = "High Elevation", 
                                    cex = 8, col = "blue", pch = 17)
 
@@ -971,23 +972,23 @@ write.csv(cbind(as.matrix(anova(retention_lm)[, c(1, 4, 5)]),
 
 ## allometry
 ggsave("plots/plots_allometry.jpeg", plot = plots_allometry,
-       width = 28, height = 18, units = "cm") # 4 panels
+       width = 28, height = 18, units = "cm", dpi = 600) # 4 panels
 
 ## foliar organics
 ggsave("plots/plots_foliar_organics.jpeg", plot = plots_foliar_organics,
-       width = 42, height = 15, units = "cm") # 3 panels
+       width = 42, height = 15, units = "cm", dpi = 600) # 3 panels
 
 ## foliar inorganics
 ggsave("plots/plots_foliar_inorganics.jpeg", plot = plots_foliar_inorganics,
-       width = 45, height = 25, units = "cm") # 6 panels
+       width = 45, height = 25, units = "cm", dpi = 600) # 6 panels
 
 ## foliar isotopes
 ggsave("plots/plots_foliar_isotopes.jpeg", plot = plots_foliar_isotopes,
-       width = 29, height = 12, units = "cm") # 2 panels
+       width = 29, height = 12, units = "cm", dpi = 600) # 2 panels
 
 ## soil organics
 ggsave("plots/plots_soil_organics.jpeg", plot = plots_soil_organics,
-       width = 42, height = 15, units = "cm") # 3 panels
+       width = 42, height = 15, units = "cm", dpi = 600) # 3 panels
 
 ## soil inorganics
 ggsave("plots/plots_soil_inorganics.jpeg", plot = plots_soil_inorganics,
@@ -995,6 +996,6 @@ ggsave("plots/plots_soil_inorganics.jpeg", plot = plots_soil_inorganics,
 
 ## soil characteristics
 ggsave("plots/plots_soil_characteristics.jpeg", plot = plots_soil_characteristics,
-       width = 42, height = 15, units = "cm") # 3 panels
+       width = 42, height = 15, units = "cm", dpi = 600) # 3 panels
 
 
