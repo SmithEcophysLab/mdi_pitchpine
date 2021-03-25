@@ -98,19 +98,19 @@ data$elevation_fac <- factor(data$elevation_fac, levels = c("low", "high"))
 data_density$elevation_fac <- factor(data_density$elevation_fac, levels = c("low", "high"))
 
 ## rename site labels to match manuscript
-data$Site[data$Name == "CAD"] = "CAD"
+data$Site[data$Name == "CAD"] = "SCT"
 data$Site[data$Name == "CADCLIFFS"] = "GOR"
 data$Site[data$Name == "STSAUV"] = "STS"
 data$Site[data$Name == "WOND"] = "WON"
 
-data_density$Site[data_density$Name == "CAD"] = "CAD"
+data_density$Site[data_density$Name == "CAD"] = "SCT"
 data_density$Site[data_density$Name == "CADCLIFFS"] = "GOR"
 data_density$Site[data_density$Name == "STSAUV"] = "STS"
 data_density$Site[data_density$Name == "WOND"] = "WON"
 
 ## reorder levels of sites to match to increase from low to high elevation and no fire to fire
-data$Site <- factor(data$Site, levels = c("WON", "GOR", "STS", "CAD"))
-data_density$Site <- factor(data_density$Site, levels = c("WON", "GOR", "STS", "CAD"))
+data$Site <- factor(data$Site, levels = c("WON", "GOR", "STS", "SCT"))
+data_density$Site <- factor(data_density$Site, levels = c("WON", "GOR", "STS", "SCT"))
 
 ## create a generic variable set to pass to formula argument
 ind_variables = c('elevation_fac', 'fire')
