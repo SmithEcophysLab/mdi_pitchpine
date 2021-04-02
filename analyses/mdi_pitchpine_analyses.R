@@ -44,11 +44,11 @@ letters_adj <- function(df = data, x = "Site", dfy, y, adjy){
 
 #### read in cleaned data ####
 
-data <- read.csv('data/mdi_all_clean.csv')
+data <- read.csv('../data/mdi_all_clean.csv')
 data$CN_foliar <- data$C_foliar/data$N_foliar
 data$CN_soil <- data$C_soil/data$N_soil
 
-data_density <- read.csv('data/mdi_stand_density.csv')
+data_density <- read.csv('../data/mdi_stand_density.csv')
 colnames(data_density)[1] <- "Name" #rename to match data
 
 ## assign fire history status to each site
