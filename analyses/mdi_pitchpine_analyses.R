@@ -502,7 +502,7 @@ d13C_abs_max <- max(data$d13C, na.rm = TRUE)
 d13C_letters <- data %>% group_by(Site) %>% 
   summarise(yaxis = max(d13C, na.rm = TRUE) - 0.02 * d13C_abs_max) # get the highest point for each species
 d13C_hsd <- HSD.test(aov(d13C ~ Site, data), "Site", group = TRUE) # get Tukey HSD results
-d13C_letters$group <- d13C_hsd$groups$groups
+d13C_letters$groups <- d13C_hsd$groups$groups
 
 (plot_d13C <- ggplot(data = data, aes(x = Site, y = d13C)) +
     geom_rect(data = NULL, aes(xmin = 0, xmax = 2.5, ymin = -Inf, ymax = Inf),
