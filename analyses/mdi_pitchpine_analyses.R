@@ -278,7 +278,7 @@ C_foliar_letters <- letters(dfy = data$C_foliar, y = "C_foliar")
     geom_text(data = C_foliar_letters, aes(y = yaxis, label = groups)) +
     theme_few(base_size = 16) + 
     scale_x_discrete(name = "Site", limits = c("WON", "GOR", "STS", "SCT")) +
-    scale_y_continuous(name = "Foliar Carbon (%)") +
+    ylab(expression("Foliar Carbon (g g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")) +
     guides(shape = guide_legend("Elevation")))
 
@@ -302,7 +302,7 @@ N_foliar_letters <- letters(dfy = data$N_foliar, y = "N_foliar")
     geom_text(data = N_foliar_letters, aes(y = yaxis, label = groups)) +
     theme_few(base_size = 16) + 
     scale_x_discrete(name = "Site", limits = c("WON", "GOR", "STS", "SCT")) +
-    scale_y_continuous(name = "Foliar Nitrogen (%)") +
+    ylab(expression("Foliar Nitrogen (g g"^{-1}*")")) +
     # theme(legend.position = "bottom", legend.title = element_text(size = 16), 
     #       legend.text = element_text(size = 12)) +
     guides(color = guide_legend("Fire History")) +
@@ -358,7 +358,7 @@ Ca_foliar_letters <- letters(dfy = data$Ca_foliar, y = "Ca_foliar")
     geom_text(data = Ca_foliar_letters, aes(y = yaxis, label = groups)) +
     theme_few(base_size = 16) + 
     scale_x_discrete(name = "Site", limits = c("WON", "GOR", "STS", "SCT")) +
-    ylab(expression("Foliar Calcium (g g"^{-1}*")")) +
+    ylab(expression("Foliar Calcium (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")) +
     guides(shape = guide_legend("Elevation")))
 
@@ -382,7 +382,7 @@ P_foliar_letters <- letters_adj(dfy = data$P_foliar, y = "P_foliar", adjy = "log
     geom_text(data = P_foliar_letters, aes(y = yaxis, label = groups)) +
     theme_few(base_size = 16) + 
     scale_x_discrete(name = "Site", limits = c("WON", "GOR", "STS", "SCT")) +
-    ylab(expression("Foliar Phosphorus (g g"^{-1}*")")) +
+    ylab(expression("Foliar Phosphorus (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")) +
     guides(shape = guide_legend("Elevation")))
 
@@ -406,7 +406,7 @@ K_foliar_letters <- letters_adj(dfy = data$K_foliar, y = "K_foliar", adjy = "log
     geom_text(data = K_foliar_letters, aes(y = yaxis, label = groups)) +
     theme_few(base_size = 16) + 
     scale_x_discrete(name = "Site", limits = c("WON", "GOR", "STS", "SCT")) +
-    ylab(expression("Foliar Potassium (g g"^{-1}*")")) +
+    ylab(expression("Foliar Potassium (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")) +
     guides(shape = guide_legend("Elevation")))
 
@@ -430,7 +430,7 @@ Mg_foliar_letters <- letters(dfy = data$Mg_foliar, y = "Mg_foliar")
     geom_text(data = Mg_foliar_letters, aes(y = yaxis, label = groups)) +
     theme_few(base_size = 16) + 
     scale_x_discrete(name = "Site", limits = c("WON", "GOR", "STS", "SCT")) +
-    ylab(expression("Foliar Magnesium (g g"^{-1}*")")) +
+    ylab(expression("Foliar Magnesium (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")) +
     guides(shape = guide_legend("Elevation")))
 
@@ -454,7 +454,7 @@ Al_foliar_letters <- letters(dfy = data$Al_foliar, y = "Al_foliar")
     geom_text(data = Al_foliar_letters, aes(y = yaxis, label = groups)) +
     theme_few(base_size = 16) + 
     scale_x_discrete(name = "Site", limits = c("WON", "GOR", "STS", "SCT")) +
-    ylab(expression("Foliar Aluminum (g g"^{-1}*")")) +
+    ylab(expression("Foliar Aluminum (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")) +
     guides(shape = guide_legend("Elevation")))
 
@@ -478,7 +478,7 @@ Zn_foliar_letters <- letters_adj(dfy = data$Zn_foliar, y = "Zn_foliar", adjy = "
     geom_text(data = Zn_foliar_letters, aes(y = yaxis, label = groups)) +
     theme_few(base_size = 16) + 
     scale_x_discrete(name = "Site", limits = c("WON", "GOR", "STS", "SCT")) +
-    ylab(expression("Foliar Zinc (g g"^{-1}*")")) +
+    ylab(expression("Foliar Zinc (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")) +
     guides(shape = guide_legend("Elevation")))
 
@@ -645,7 +645,7 @@ Ca_soil_letters <- letters(dfy = data$Ca_soil, y = "Ca_soil")
     geom_text(data = Ca_soil_letters, aes(y = yaxis, label = groups)) +
     theme_few(base_size = 16) + 
     scale_x_discrete(name = "Site", limits = c("WON", "GOR", "STS", "SCT")) +
-    ylab(expression("Soil Calcium (g g"^{-1}*")")) +
+    ylab(expression("Soil Calcium (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")) +
     guides(shape = guide_legend("Elevation")))
 
@@ -669,7 +669,7 @@ P_soil_letters <- letters_adj(dfy = data$P_soil, y = "P_soil", adjy = "log(P_soi
     geom_text(data = P_soil_letters, aes(y = yaxis, label = groups)) +
     theme_few(base_size = 16) + 
     scale_x_discrete(name = "Site", limits = c("WON", "GOR", "STS", "SCT")) +
-    ylab(expression("Soil Phosphorus (g g"^{-1}*")")) +
+    ylab(expression("Soil Phosphorus (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")) +
     guides(shape = guide_legend("Elevation")))
 
@@ -693,7 +693,7 @@ K_soil_letters <- letters(dfy = data$K_soil, y = "K_soil")
     geom_text(data = K_soil_letters, aes(y = yaxis, label = groups)) +
     theme_few(base_size = 16) + 
     scale_x_discrete(name = "Site", limits = c("WON", "GOR", "STS", "SCT")) +
-    ylab(expression("Soil Potassium (g g"^{-1}*")")) +
+    ylab(expression("Soil Potassium (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")) +
     guides(shape = guide_legend("Elevation")))
 
@@ -717,7 +717,7 @@ Mg_soil_letters <- letters(dfy = data$Mg_soil, y = "Mg_soil")
     geom_text(data = Mg_soil_letters, aes(y = yaxis, label = groups)) +
     theme_few(base_size = 16) + 
     scale_x_discrete(name = "Site", limits = c("WON", "GOR", "STS", "SCT")) +
-    ylab(expression("Soil Magnesium (g g"^{-1}*")")) +
+    ylab(expression("Soil Magnesium (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")) +
     guides(shape = guide_legend("Elevation")))
 
@@ -741,7 +741,7 @@ Al_soil_letters <- letters_adj(dfy = data$Al_soil, y = "Al_soil", adjy = "log(Al
     geom_text(data = Al_soil_letters, aes(y = yaxis, label = groups)) +
     theme_few(base_size = 16) + 
     scale_x_discrete(name = "Site", limits = c("WON", "GOR", "STS", "SCT")) +
-    ylab(expression("Soil Aluminum (g g"^{-1}*")")) +
+    ylab(expression("Soil Aluminum (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")) +
     guides(shape = guide_legend("Elevation")))
 
@@ -765,7 +765,7 @@ Zn_soil_letters <- letters_adj(dfy = data$Zn_soil, y = "Zn_soil", adjy = "log(Zn
     geom_text(data = Zn_soil_letters, aes(y = yaxis, label = groups)) +
     theme_few(base_size = 16) + 
     scale_x_discrete(name = "Site", limits = c("WON", "GOR", "STS", "SCT")) +
-    ylab(expression("Soil Zinc (g g"^{-1}*")")) +
+    ylab(expression("Soil Zinc (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")) +
     guides(shape = guide_legend("Elevation")))
 
