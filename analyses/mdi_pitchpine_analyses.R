@@ -141,18 +141,18 @@ watson.two.test(aspect_GOR, aspect_SCT) # 0.05 < P < 0.1
 watson.two.test(aspect_STS, aspect_SCT) # P < 0.001
 
 #### circular plots for each site
-jpeg(filename = "analyses/plots/plots_aspect.jpeg", width = 3000, 
+jpeg(filename = "plots/plots_aspect.jpeg", width = 3000, 
      height = 3000, units = 'px')
 par(mfrow = c(2, 2), cex.lab = 6, cex.main = 6, mar = c(5.5, 8.5, 5.5, 2.5))
-plot_aspect_CADCLIFFS <- plot.circular(aspect_CADCLIFFS, main = 'Gorham Cliffs (a)', 
+plot_aspect_GOR <- plot.circular(aspect_GOR, main = 'Gorham Cliffs (a)', 
                                       ylab = "Fire", 
                                       cex = 8, col = "red", pch = 16)
-plot_aspect_CAD <- plot.circular(aspect_CAD, main = 'South Cadillac (a)',
+plot_aspect_SCT <- plot.circular(aspect_SCT, main = 'South Cadillac (a)',
                                 cex = 8, col = "red", pch = 17)
-plot_aspect_WOND <- plot.circular(aspect_WOND, main = 'Wonderland (b)', 
+plot_aspect_WON <- plot.circular(aspect_WON, main = 'Wonderland (b)', 
                                  ylab = "No Fire", xlab = "Low Elevation", 
                                  cex = 8, col = "blue", pch = 16)
-plot_aspect_STSAUV <- plot.circular(aspect_STSAUV, main = 'St. Sauveur (c)', 
+plot_aspect_STS <- plot.circular(aspect_STS, main = 'St. Sauveur (c)', 
                                    xlab = "High Elevation", 
                                    cex = 8, col = "blue", pch = 17)
 dev.off()
