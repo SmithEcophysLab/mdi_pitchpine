@@ -546,6 +546,11 @@ d15N_letters <- letters(dfy = data$d15N, y = "d15N")
     plot_annotation(tag_levels = 'A') & 
     theme(plot.tag = element_text(size = 16)))
 
+(plots_foliar <- (plot_d13C + plot_d15N) / (plot_C_foliar + plot_N_foliar + plot_CN_foliar) +
+    plot_layout(guides = 'collect') +
+    plot_annotation(tag_levels = 'A') & 
+    theme(plot.tag = element_text(size = 16)))
+
 ## soil organics
 ### C_soil
 C_soil_lm <- lm(as.formula(paste(dep_variables[24],
@@ -854,6 +859,11 @@ retention_letters <- letters_adj(dfy = data$Retention, y = "Retention", adjy = "
     plot_annotation(tag_levels = 'A') & 
     theme(plot.tag = element_text(size = 16)))
 
+(plots_soil <- (plot_C_soil + plot_N_soil + plot_CN_soil)/(plot_retention + plot_CEC + plot_pH) +
+    plot_layout(guides = "collect") +
+    plot_annotation(tag_levels = 'A') & 
+    theme(plot.tag = element_text(size = 16)))
+
 #### tables and posthoc ####
 
 ### topography
@@ -936,28 +946,19 @@ write.csv(cbind(as.matrix(anova(retention_lm)[, c(1, 4, 5)]),
 ggsave("plots/plots_allometry.jpeg", plot = plots_allometry,
        width = 28, height = 18, units = "cm", dpi = 600) # 4 panels
 
-## foliar organics
-ggsave("plots/plots_foliar_organics.jpeg", plot = plots_foliar_organics,
-       width = 42, height = 15, units = "cm", dpi = 600) # 3 panels
+## foliar organics & isotopes
+ggsave("plots/plots_foliar.jpeg", plot = plots_foliar,
+       width = 42, height = 25, units = "cm", dpi = 600) # 5 panels
 
 ## foliar inorganics
 ggsave("plots/plots_foliar_inorganics.jpeg", plot = plots_foliar_inorganics,
        width = 45, height = 25, units = "cm", dpi = 600) # 6 panels
 
-## foliar isotopes
-ggsave("plots/plots_foliar_isotopes.jpeg", plot = plots_foliar_isotopes,
-       width = 29, height = 12, units = "cm", dpi = 600) # 2 panels
-
-## soil organics
-ggsave("plots/plots_soil_organics.jpeg", plot = plots_soil_organics,
-       width = 42, height = 15, units = "cm", dpi = 600) # 3 panels
+## soil organics & soil characteristics
+ggsave("plots/plots_soil.jpeg", plot = plots_soil,
+       width = 42, height = 25, units = "cm", dpi = 600) # 6 panels
 
 ## soil inorganics
 ggsave("plots/plots_soil_inorganics.jpeg", plot = plots_soil_inorganics,
        width = 45, height = 25, units = "cm") # 6 panels
-
-## soil characteristics
-ggsave("plots/plots_soil_characteristics.jpeg", plot = plots_soil_characteristics,
-       width = 42, height = 15, units = "cm", dpi = 600) # 3 panels
-
 
