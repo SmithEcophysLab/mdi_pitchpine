@@ -53,6 +53,15 @@ geo_biophysical_isotope_foliar_soil <- full_join(geo_biophysical_isotope_foliar,
 mdi_all = full_join(geo_biophysical_isotope_foliar_soil, retention, by = c('ID', 'Name'))
 mdi_all <- mdi_all %>% select(ID, everything())
 
+## set unique ID
+mdi_all <- separate(mdi_all, ID, c("ID", "Rep"))
+mdi_all$ID[mdi_all$Name == "CAD"] = paste("CAD", mdi_all$Rep[mdi_all$Name == "CAD"], sep = "_")
+mdi_all$ID[mdi_all$Name == "STSAUV"] = paste("STSAUV", mdi_all$Rep[mdi_all$Name == "STSAUV"], sep = "_")
+mdi_all$ID[mdi_all$Name == "CADCLIFFS"] = paste("CADCLIFFS", mdi_all$Rep[mdi_all$Name == "CADCLIFFS"], sep = "_")
+mdi_all$ID[mdi_all$Name == "WOND"] = paste("WOND", mdi_all$Rep[mdi_all$Name == "WOND"], sep = "_")
+mdi_all$Rep <- NULL
+
+
 write.csv(mdi_all, 'mdi_all_clean.csv', row.names = F)
 
 
