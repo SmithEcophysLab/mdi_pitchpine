@@ -11,41 +11,6 @@ library(ggthemes)
 library(agricolae)
 library(patchwork)
 
-# function to get pairwise letters from Tukey's HSD for boxplots
-letters <- function(df = data, x = "Site", dfy, y){
-  .checkvar <- sym(y) #convert string to variable
-  .groupvar <- sym(x) #convert string to variable
-  
-  # find highest value of y data
-  abs_max <- max(dfy, na.rm = TRUE) 
-  # get the highest point for each species
-  max_y <- df %>% dplyr::group_by(!! .groupvar) %>% 
-    dplyr::summarise(yaxis = max(!! .checkvar, na.rm = TRUE) + 0.05 * abs_max)
-    #"!!" unquotes the variable to allow for evaluation within dplyr
-  # get Tukey HSD results
-  hsd <- HSD.test(aov(as.formula(paste(y, x, sep = "~")), df), x, group = TRUE) 
-  # add Tukey HSD results to dataframe containing graphing positions
-  group <- as.data.frame(hsd$groups)
-  group <- tibble::rownames_to_column(group, "Site")
-  letters <- dplyr::full_join(max_y, group, by = "Site")
-  return(letters)
-}
-
-# function to get pairwise letters from Tukey's HSD with a transformed y variable for boxplots
-letters_adj <- function(df = data, x = "Site", dfy, y, adjy){
-  .checkvar <- sym(y)
-  .groupvar <- sym(x)
-  
-  abs_max <- max(dfy, na.rm = TRUE)
-  max_y <- df %>% dplyr::group_by(!! .groupvar) %>% 
-    dplyr::summarise(yaxis = max(!! .checkvar, na.rm = TRUE) + 0.05 * abs_max) 
-  hsd <- HSD.test(aov(as.formula(paste(adjy, x, sep = "~")), df), x, group = TRUE) 
-  group <- as.data.frame(hsd$groups)
-  group <- tibble::rownames_to_column(group, "Site")
-  letters <- dplyr::full_join(max_y, group, by = "Site")
-  return(letters)
-}
-
 #### read in cleaned data ####
 
 data <- read.csv('../data/mdi_all_clean.csv')
@@ -75,14 +40,6 @@ data$Site[data$Name == "CAD"] <- "SCT"
 data$Site[data$Name == "CADCLIFFS"] <- "GOR"
 data$Site[data$Name == "STSAUV"] <- "STS"
 data$Site[data$Name == "WOND"] <- "WON"
-
-## create a generic variable set to pass to formula argument
-ind_variables <- c('Elevation', 'Slope', 'Fire')
-dep_variables <- c("log(Height)", "log(Canopy)", "log(Diam)", "mean_distance",
-                  "d13C", "d15N", "C_foliar", "N_foliar", "CN_foliar", "Ca_foliar", "log(P_foliar)",
-                  "log(K_foliar)", "Mg_foliar", "Al_foliar", "log(Zn_foliar)", 
-                  "Ca_soil", "log(P_soil)", "K_soil", "Mg_soil", "log(Al_soil)", "log(Zn_soil)", 
-                  "pH", "CEC", "C_soil", "N_soil", "log(CN_soil)", "asin(sqrt(0.01 * Retention))")
 
 #### fit models and explore results ####
 
@@ -123,129 +80,180 @@ plot_aspect_STS <- plot.circular(aspect_STS, main = 'St. Sauveur (c)',
                                    cex = 8, col = "blue", pch = 17)
 dev.off()
 
+## slope
+slope_lm <- lmer(Slope ~ Elevation * Fire + (1 | Site), data = data)
+# plot(resid(slope_lm) ~ fitted(slope_lm))
+Anova(slope_lm)
+summary(slope_lm) # N = 60
+
+(plot_slope <- ggplot(data = data, aes(x = Elevation, y = Slope)) +
+    geom_jitter(aes(color = Fire), size = 2) +
+    scale_color_manual(values = c('red', 'blue')) +
+    theme_few(base_size = 16) + 
+    scale_x_continuous(name = "Elevation (m)", limits = c(0, 1500)) +
+    scale_y_continuous(name = "Slope (◦)") +
+    guides(color = guide_legend("Fire History")))
+
 ## allometry
 ### height
-height_lm <- lm(as.formula(paste(dep_variables[1],
-                                paste(ind_variables, collapse = "*"),
-                                sep = "~")), data = data)
-#plot(resid(height_lm) ~ fitted(height_lm))
+height_lm <- lmer(log(Height) ~ Elevation * Fire + (1 | Site), data = data)
+# plot(resid(height_lm) ~ fitted(height_lm))
 Anova(height_lm)
+summary(height_lm) # N = 40
+
+emtrends(height_lm, ~ Fire, var = "Elevation") # fire = -0.000905 | no fire = 0.000405
+emmeans(height_lm, ~ Fire, at = list(Elevation = 0)) # fire = 1.67 | no fire = 1.25
+
+height_f_slope <- summary(emtrends(height_lm, ~ Fire, var = "Elevation"))[1, 2] 
+height_f_intercept <- summary(emmeans(height_lm, ~ Fire, at = list(Elevation = 0)))[1, 2] 
+height_f_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+height_f_trend <- height_f_intercept + height_f_seq * height_f_slope
+height_f_trend <- as.data.frame(cbind(height_f_seq, height_f_trend))
+
+height_nf_slope <- summary(emtrends(height_lm, ~ Fire, var = "Elevation"))[2, 2] 
+height_nf_intercept <- summary(emmeans(height_lm, ~ Fire, at = list(Elevation = 0)))[2, 2] 
+height_nf_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+height_nf_trend <- height_nf_intercept + height_nf_seq * height_nf_slope
+height_nf_trend <- as.data.frame(cbind(height_nf_seq, height_nf_trend))
+
+(plot_height <- ggplot(data = data, aes(x = Elevation, y = log(Height))) +
+    geom_jitter(aes(color = Fire), size = 2) +
+    scale_color_manual(values = c('red', 'blue')) +
+    geom_line(data = height_f_trend, aes(x = height_f_seq, y = height_f_trend), 
+              col = 'red', lwd = 2, alpha = 0.8) +
+    geom_line(data = height_nf_trend, aes(x = height_nf_seq, y = height_nf_trend), 
+              col = 'blue', lwd = 2, alpha = 0.8) +
+    theme_few(base_size = 16) + 
+    scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
+    scale_y_continuous(name = "Height (m)") +
+    guides(color = guide_legend("Fire History")))
 
 ### canopy
-canopy_lm <- lm(as.formula(paste(dep_variables[2],
-                                paste(ind_variables, collapse = "*"),
-                                sep = "~")), data = data)
+canopy_lm <- lmer(log(Canopy) ~ Elevation * Fire + (1 | Site), data = data)
 # plot(resid(canopy_lm) ~ fitted(canopy_lm))
-anova(canopy_lm)
+Anova(canopy_lm)
+summary(canopy_lm) # N = 40
 
-(plot_canopy <- ggplot(data = data, aes(x = Elevation, y = Canopy)) +
+emtrends(canopy_lm, ~ Elevation, var = "Elevation") # slope = -0.000726
+emmeans(canopy_lm, ~ Elevation, at = list(Elevation = 0)) # intercept = 1.27
+
+canopy_slope <- summary(emtrends(canopy_lm, ~ Elevation, var = "Elevation"))[1, 2] 
+canopy_intercept <- summary(emmeans(canopy_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
+canopy_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+canopy_trend <- canopy_intercept + canopy_seq * canopy_slope
+canopy_trend <- as.data.frame(cbind(canopy_seq, canopy_trend))
+
+(plot_canopy <- ggplot(data = data, aes(x = Elevation, y = log(Canopy))) +
     geom_jitter(aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_smooth(method = lm, color = "black") +
+    geom_line(data = canopy_trend, aes(x = canopy_seq, y = canopy_trend), 
+              col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
-    theme(legend.position = "bottom") +
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
     scale_y_continuous(name = "Canopy Spread (m)") +
-    guides(color = "none"))
+    guides(color = guide_legend("Fire History")))
 
 ### diam
-diam_lm <- lm(as.formula(paste(dep_variables[3],
-                              paste(ind_variables, collapse = "*"),
-                              sep = "~")), data = data)
+diam_lm <- lmer(log(Diam) ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(diam_lm) ~ fitted(diam_lm))
-anova(diam_lm)
+Anova(diam_lm)
+summary(diam_lm) # N = 40
 
-(plot_diam <- ggplot(data = data, aes(x = Elevation, y = Diam)) +
+emtrends(diam_lm, ~ Elevation, var = "Elevation") # slope = -0.000886
+emmeans(diam_lm, ~ Elevation, at = list(Elevation = 0)) # intercept = 3.21
+
+diam_slope <- summary(emtrends(diam_lm, ~ Elevation, var = "Elevation"))[1, 2] 
+diam_intercept <- summary(emmeans(diam_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
+diam_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+diam_trend <- diam_intercept + diam_seq * diam_slope
+diam_trend <- as.data.frame(cbind(diam_seq, diam_trend))
+
+(plot_diam <- ggplot(data = data, aes(x = Elevation, y = log(Diam))) +
     geom_jitter(aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_smooth(method = lm, color = "black") +
+    geom_line(data = diam_trend, aes(x = diam_seq, y = diam_trend), 
+              col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) +
-    theme(legend.position = "bottom") +
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
-    scale_y_continuous(name = "DBH (cm)", limits = c(0, 60)) +
+    scale_y_continuous(name = "DBH (cm)", limits = c(1, 5)) +
     guides(color = guide_legend("Fire History")))
 
 ### density
-density_lm <- lm(as.formula(paste(dep_variables[4],
-                                  paste(ind_variables, collapse = "*"),
-                                  sep = "~")), data = data)
+density_lm <- lmer(mean_distance ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(density_lm) ~ fitted(density_lm))
-anova(density_lm)
+Anova(density_lm)
+summary(density_lm) # N = 60
+
+emtrends(density_lm, ~ Fire, var = "Elevation") # fire = 0.000222 | no fire = 0.006379
+emmeans(density_lm, ~ Fire, at = list(Elevation = 0)) # fire = 3.36 | no fire = 1.03
+
+density_f_slope <- summary(emtrends(density_lm, ~ Fire, var = "Elevation"))[1, 2] 
+density_f_intercept <- summary(emmeans(density_lm, ~ Fire, at = list(Elevation = 0)))[1, 2] 
+density_f_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+density_f_trend <- density_f_intercept + density_f_seq * density_f_slope
+density_f_trend <- as.data.frame(cbind(density_f_seq, density_f_trend))
+
+density_nf_slope <- summary(emtrends(density_lm, ~ Fire, var = "Elevation"))[2, 2] 
+density_nf_intercept <- summary(emmeans(density_lm, ~ Fire, at = list(Elevation = 0)))[2, 2] 
+density_nf_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+density_nf_trend <- density_nf_intercept + density_nf_seq * density_nf_slope
+density_nf_trend <- as.data.frame(cbind(density_nf_seq, density_nf_trend))
 
 (plot_density <- ggplot(data = data, aes(x = Elevation, y = mean_distance)) +
     geom_jitter(aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_smooth(method = lm, color = "black") +
+    geom_line(data = density_f_trend, aes(x = density_f_seq, y = density_f_trend), 
+              col = 'red', lwd = 2, alpha = 0.8) +
+    geom_line(data = density_nf_trend, aes(x = density_nf_seq, y = density_nf_trend), 
+              col = 'blue', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) +
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1500)) +
     scale_y_continuous(name = "Distance Between Neighbors (m)", limits = c(0, 6)) + 
-    guides(color = "none"))
+    guides(color = guide_legend("Fire History")))
 
-(plots_allometry <- plot_canopy + plot_diam + plot_density + 
-    plot_layout(guides = 'keep') +
+(plots_allometry <- plot_canopy + plot_diam + plot_density + plot_height + 
+    plot_layout(guides = 'collect') +
     plot_annotation(tag_levels = 'A') & 
     theme(plot.tag = element_text(size = 16)))
 
 ## foliar isotopes
 ### d13C
-d13C_lm <- lm(as.formula(paste(dep_variables[5],
-                               paste(ind_variables, collapse = "*"),
-                               sep = "~")), data = data)
-#plot(resid(d13C_lm) ~ fitted(d13C_lm))
-anova(d13C_lm)
+d13C_lm <- lmer(d13C ~ Elevation * Fire + (1 | Site), data = data)
+plot(resid(d13C_lm) ~ fitted(d13C_lm))
+Anova(d13C_lm)
+summary(d13C_lm) # N = 55
 
-(plot_d13C_elev <- ggplot(data = data, aes(x = Elevation, y = d13C)) +
+emtrends(d13C_lm, ~ Elevation, var = "Elevation") # slope = -0.00556
+emmeans(d13C_lm, ~ Elevation, at = list(Elevation = 0)) # intercept = -26.5
+
+d13C_slope <- summary(emtrends(d13C_lm, ~ Elevation, var = "Elevation"))[1, 2] 
+d13C_intercept <- summary(emmeans(d13C_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
+d13C_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+d13C_trend <- d13C_intercept + d13C_seq * d13C_slope
+d13C_trend <- as.data.frame(cbind(d13C_seq, d13C_trend))
+
+(plot_d13C <- ggplot(data = data, aes(x = Elevation, y = d13C)) +
     geom_jitter(aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_smooth(method = lm, color = "black") +
+    geom_line(data = d13C_trend, aes(x = d13C_seq, y = d13C_trend), 
+              col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
     ylab(expression(delta^{"13"}*"C (‰)")) +
     guides(color = guide_legend("Fire History")))
 
-d13C_slope_fire <- summary(emtrends(d13C_lm, ~ Fire, var = "Slope"))[1, 2] # slope = -0.1200
-d13C_intercept_fire <- summary(emmeans(d13C_lm, ~ Fire, at = list(Slope = 0)))[1, 2] # intercept = -25.5
-d13C_seq_fire <- seq(min(data$Slope, na.rm = T), max(data$Slope, na.rm = T), 0.01)
-d13C_trend_fire <- d13C_intercept_fire + d13C_seq_fire * d13C_slope_fire
-d13C_trend_fire <- as.data.frame(cbind(d13C_seq_fire, d13C_trend_fire))
-
-d13C_slope_nofire <- summary(emtrends(d13C_lm, ~ Fire, var = "Slope"))[2, 2] # slope = 0.0778
-d13C_intercept_nofire <- summary(emmeans(d13C_lm, ~ Fire, at = list(Slope = 0)))[2, 2] # intercept = -29.3
-d13C_seq_nofire <- seq(min(data$Slope, na.rm = T), max(data$Slope, na.rm = T), 0.01)
-d13C_trend_nofire <- d13C_intercept_nofire + d13C_seq_nofire * d13C_slope_nofire
-d13C_trend_nofire <- as.data.frame(cbind(d13C_seq_nofire, d13C_trend_nofire))
-
-(plot_d13C_slope <- ggplot(data = data, aes(x = Slope, y = d13C)) +
-    geom_jitter(aes(color = Fire), size = 2) +
-    scale_color_manual(values = c('red', 'blue')) +
-    geom_line(data = d13C_trend_fire, aes(x = d13C_seq_fire, y = d13C_trend_fire), 
-              col = 'red', lwd = 2, alpha = 0.5) +
-    geom_line(data = d13C_trend_nofire, aes(x = d13C_seq_nofire, y = d13C_trend_nofire), 
-              col = 'blue', lwd = 2, alpha = 0.5) +
-    theme_few(base_size = 16) + 
-    scale_x_continuous(name = "Slope (°)") +
-    ylab(expression(delta^{"13"}*"C (‰)")) +
-    guides(color = guide_legend("Fire History")))
-
 ### d15N
-d15N_lm <- lm(as.formula(paste(dep_variables[6],
-                               paste(ind_variables, collapse = "*"),
-                               sep = "~")), data = data)
+d15N_lm <- lmer(d15N ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(d15N_lm) ~ fitted(d15N_lm))
-anova(d15N_lm)
-
-(plots_isotopes <- plot_d13C_elev + plot_d13C_slope +
-    plot_layout(guides = 'collect') +
-    plot_annotation(tag_levels = 'A') & 
-    theme(plot.tag = element_text(size = 16)))
+Anova(d15N_lm)
+summary(d15N_lm) # N = 55
 
 ## foliar organics
 ### C_foliar
-C_foliar_lm <- lm(as.formula(paste(dep_variables[7],
-                                  paste(ind_variables, collapse = "*"),
-                                  sep = "~")), data = data)
+C_foliar_lm <- lmer(C_foliar ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(C_foliar_lm) ~ fitted(C_foliar_lm))
-anova(C_foliar_lm)
+Anova(C_foliar_lm)
+summary(C_foliar_lm) # N = 60
 
 (plot_C_foliar <- ggplot(data = data, aes(x = Fire, y = C_foliar)) +
     geom_jitter(height = 0, aes(color = Fire), size = 2) +
@@ -257,386 +265,337 @@ anova(C_foliar_lm)
     guides(color = "none"))
 
 ### N_foliar
-N_foliar_lm <- lm(as.formula(paste(dep_variables[8],
-                                  paste(ind_variables, collapse = "*"),
-                                  sep = "~")), data = data)
+N_foliar_lm <- lmer(N_foliar ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(N_foliar_lm) ~ fitted(N_foliar_lm))
-anova(N_foliar_lm)
+Anova(N_foliar_lm)
+summary(N_foliar_lm) # N = 56
 
 ### CN_foliar
-CN_foliar_lm <- lm(as.formula(paste(dep_variables[9],
-                                   paste(ind_variables, collapse = "*"),
-                                   sep = "~")), data = data)
+CN_foliar_lm <- lmer(CN_foliar ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(CN_foliar_lm) ~ fitted(CN_foliar_lm))
-anova(CN_foliar_lm)
+Anova(CN_foliar_lm)
+summary(CN_foliar_lm) # N = 56
 
 ## foliar inorganics
 ### Ca_foliar
-Ca_foliar_lm <- lm(as.formula(paste(dep_variables[10],
-                                   paste(ind_variables, collapse = "*"),
-                                   sep = "~")), data = data)
-#plot(resid(Ca_foliar_lm) ~ fitted(Ca_foliar_lm))
-anova(Ca_foliar_lm)
+Ca_foliar_lm <- lmer(Ca_foliar ~ Elevation * Fire + (1 | Site), data = data)
+# plot(resid(Ca_foliar_lm) ~ fitted(Ca_foliar_lm))
+Anova(Ca_foliar_lm)
+summary(Ca_foliar_lm) # N = 40
+
+emtrends(Ca_foliar_lm, ~ Elevation, var = "Elevation") # slope = -0.00129
+emmeans(Ca_foliar_lm, ~ Elevation, at = list(Elevation = 0)) # intercept = 1.82
+
+Ca_foliar_slope <- summary(emtrends(Ca_foliar_lm, ~ Elevation, var = "Elevation"))[1, 2] 
+Ca_foliar_intercept <- summary(emmeans(Ca_foliar_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
+Ca_foliar_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+Ca_foliar_trend <- Ca_foliar_intercept + Ca_foliar_seq * Ca_foliar_slope
+Ca_foliar_trend <- as.data.frame(cbind(Ca_foliar_seq, Ca_foliar_trend))
 
 (plot_Ca_foliar <- ggplot(data = data, aes(x = Elevation, y = Ca_foliar)) +
     geom_jitter(aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_smooth(method = lm, color = "black") +
+    geom_line(data = Ca_foliar_trend, aes(x = Ca_foliar_seq, y = Ca_foliar_trend), 
+              col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
     ylab(expression("Foliar Calcium (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")))
 
 ### P_foliar
-P_foliar_lm <- lm(as.formula(paste(dep_variables[11],
-                                  paste(ind_variables, collapse = "*"),
-                                  sep = "~")), data = data)
+P_foliar_lm <- lmer(log(P_foliar) ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(P_foliar_lm) ~ fitted(P_foliar_lm))
-anova(P_foliar_lm)
-
-(plot_P_foliar <- ggplot(data = data, aes(x = Fire, y = P_foliar)) +
-    geom_jitter(height = 0, aes(color = Fire), size = 2) +
-    scale_color_manual(values = c('red', 'blue')) +
-    geom_boxplot(outlier.color = NA, fill = NA) +
-    theme_few(base_size = 16) + 
-    scale_x_discrete(name = "Fire History") +
-    ylab(expression("Foliar Phosphorus (g g"^{-1}*")")) +
-    guides(color = "none"))
+Anova(P_foliar_lm)
+summary(P_foliar_lm) # N = 40
 
 ### K_foliar
-K_foliar_lm <- lm(as.formula(paste(dep_variables[12],
-                                  paste(ind_variables, collapse = "*"),
-                                  sep = "~")), data = data)
+K_foliar_lm <- lmer(log(K_foliar) ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(K_foliar_lm) ~ fitted(K_foliar_lm))
-anova(K_foliar_lm)
+Anova(K_foliar_lm)
+summary(K_foliar_lm) # N = 40
 
-ggplot(data, aes(x = Elevation, y = K_foliar)) + geom_jitter() + geom_smooth(method = lm)
+emtrends(K_foliar_lm, ~ Fire, var = "Elevation") # fire = -0.001582 | no fire = 0.000584
+emmeans(K_foliar_lm, ~ Fire, at = list(Elevation = 0)) # fire = 0.904 | no fire = 0.731
 
-(plot_K_foliar <- ggplot(data = data, aes(x = Fire, y = K_foliar)) +
-    geom_jitter(height = 0, aes(color = Fire), size = 2) +
+K_foliar_f_slope <- summary(emtrends(K_foliar_lm, ~ Fire, var = "Elevation"))[1, 2] 
+K_foliar_f_intercept <- summary(emmeans(K_foliar_lm, ~ Fire, at = list(Elevation = 0)))[1, 2] 
+K_foliar_f_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+K_foliar_f_trend <- K_foliar_f_intercept + K_foliar_f_seq * K_foliar_f_slope
+K_foliar_f_trend <- as.data.frame(cbind(K_foliar_f_seq, K_foliar_f_trend))
+
+K_foliar_nf_slope <- summary(emtrends(K_foliar_lm, ~ Fire, var = "Elevation"))[2, 2] 
+K_foliar_nf_intercept <- summary(emmeans(K_foliar_lm, ~ Fire, at = list(Elevation = 0)))[2, 2] 
+K_foliar_nf_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+K_foliar_nf_trend <- K_foliar_nf_intercept + K_foliar_nf_seq * K_foliar_nf_slope
+K_foliar_nf_trend <- as.data.frame(cbind(K_foliar_nf_seq, K_foliar_nf_trend))
+
+(plot_K_foliar <- ggplot(data = data, aes(x = Elevation, y = log(K_foliar))) +
+    geom_jitter(aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_boxplot(outlier.color = NA, fill = NA) +
-    theme_few(base_size = 16) +
-    scale_x_discrete(name = "Fire History") +
-    ylab(expression("Foliar Potassium (mg g"^{-1}*")")) +
-    guides(color = "none"))
-
-### Mg_foliar
-Mg_foliar_lm <- lm(as.formula(paste(dep_variables[13],
-                                   paste(ind_variables, collapse = "*"),
-                                   sep = "~")), data = data)
-#plot(resid(Mg_foliar_lm) ~ fitted(Mg_foliar_lm))
-anova(Mg_foliar_lm)
-
-### Al_foliar
-Al_foliar_lm <- lm(as.formula(paste(dep_variables[14],
-                                   paste(ind_variables, collapse = "*"),
-                                   sep = "~")), data = data)
-#plot(resid(Al_foliar_lm) ~ fitted(Al_foliar_lm))
-anova(Al_foliar_lm)
-
-### Zn_foliar
-Zn_foliar_lm <- lm(as.formula(paste(dep_variables[15],
-                                   paste(ind_variables, collapse = "*"),
-                                   sep = "~")), data = data)
-#plot(resid(Zn_foliar_lm) ~ fitted(Zn_foliar_lm))
-anova(Zn_foliar_lm)
-
-(plot_Zn_foliar <- ggplot(data = data, aes(x = Elevation, y = Zn_foliar)) +
-    geom_jitter(height = 0, aes(color = Fire), size = 2) +
-    scale_color_manual(values = c('red', 'blue')) +
-    geom_smooth(method = lm, color = "black") +
+    geom_line(data = K_foliar_f_trend, aes(x = K_foliar_f_seq, y = K_foliar_f_trend), 
+              col = 'red', lwd = 2, alpha = 0.8) +
+    geom_line(data = K_foliar_nf_trend, aes(x = K_foliar_nf_seq, y = K_foliar_nf_trend), 
+              col = 'blue', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
-    ylab(expression("Foliar Zinc (mg g"^{-1}*")")) +
+    ylab(expression("Foliar Potassium (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")))
 
-(plots_foliar <- (plot_C_foliar + plot_P_foliar + plot_K_foliar) /
-    (plot_Ca_foliar + plot_Zn_foliar) + 
+### Mg_foliar
+Mg_foliar_lm <- lmer(Mg_foliar ~ Elevation * Fire + (1 | Site), data = data)
+#plot(resid(Mg_foliar_lm) ~ fitted(Mg_foliar_lm))
+Anova(Mg_foliar_lm)
+summary(Mg_foliar_lm) # N = 40
+
+### Al_foliar
+Al_foliar_lm <- lmer(Al_foliar ~ Elevation * Fire + (1 | Site), data = data)
+#plot(resid(Al_foliar_lm) ~ fitted(Al_foliar_lm))
+Anova(Al_foliar_lm)
+summary(Al_foliar_lm) # N = 40
+
+### Zn_foliar
+Zn_foliar_lm <- lmer(log(Zn_foliar) ~ Elevation * Fire + (1 | Site), data = data)
+#plot(resid(Zn_foliar_lm) ~ fitted(Zn_foliar_lm))
+Anova(Zn_foliar_lm)
+summary(Zn_foliar_lm) # N = 40
+
+(plots_foliar <- (plot_d13C + plot_C_foliar + plot_Ca_foliar + plot_K_foliar) + 
     plot_layout(guides = 'collect') +
     plot_annotation(tag_levels = 'A') & 
     theme(plot.tag = element_text(size = 16)))
 
 ## soil organics
 ### C_soil
-C_soil_lm <- lm(as.formula(paste(dep_variables[24],
-                                paste(ind_variables, collapse = "*"),
-                                sep = "~")), data = data)
+C_soil_lm <- lmer(C_soil ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(C_soil_lm) ~ fitted(C_soil_lm))
-anova(C_soil_lm)
+Anova(C_soil_lm)
+summary(C_soil_lm) # N = 31
+
+emtrends(C_soil_lm, ~ Elevation, var = "Elevation") # slope = -0.0141
+emmeans(C_soil_lm, ~ Elevation, at = list(Elevation = 0)) # intercept = 24.4
+
+C_soil_slope <- summary(emtrends(C_soil_lm, ~ Elevation, var = "Elevation"))[1, 2] 
+C_soil_intercept <- summary(emmeans(C_soil_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
+C_soil_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+C_soil_trend <- C_soil_intercept + C_soil_seq * C_soil_slope
+C_soil_trend <- as.data.frame(cbind(C_soil_seq, C_soil_trend))
 
 (plot_C_soil <- ggplot(data = data, aes(x = Elevation, y = C_soil)) +
     geom_jitter(height = 0, aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_smooth(method = lm, color = "black") +
+    geom_line(data = C_soil_trend, aes(x = C_soil_seq, y = C_soil_trend), 
+              col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
     ylab(expression("Soil Carbon (g g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")))
 
 ### N_soil
-N_soil_lm <- lm(as.formula(paste(dep_variables[25],
-                                paste(ind_variables, collapse = "*"),
-                                sep = "~")), data = data)
+N_soil_lm <- lmer(N_soil ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(N_soil_lm) ~ fitted(N_soil_lm))
-anova(N_soil_lm)
+Anova(N_soil_lm)
+summary(N_soil_lm) # N = 26
 
 ### CN_soil
-CN_soil_lm <- lm(as.formula(paste(dep_variables[26],
-                                 paste(ind_variables, collapse = "*"),
-                                 sep = "~")), data = data)
+CN_soil_lm <- lmer(log(CN_soil) ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(CN_soil_lm) ~ fitted(CN_soil_lm))
-anova(CN_soil_lm)
+Anova(CN_soil_lm)
+summary(CN_soil_lm) # N = 26
 
-(plot_CN_soil_elev <- ggplot(data = data, aes(x = Elevation, y = CN_soil)) +
-    geom_jitter(aes(color = Fire), size = 2) +
+emtrends(CN_soil_lm, ~ Elevation, var = "Elevation") # slope = -0.00106
+emmeans(CN_soil_lm, ~ Elevation, at = list(Elevation = 0)) # intercept = 3.78
+
+CN_soil_slope <- summary(emtrends(CN_soil_lm, ~ Elevation, var = "Elevation"))[1, 2] 
+CN_soil_intercept <- summary(emmeans(CN_soil_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
+CN_soil_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+CN_soil_trend <- CN_soil_intercept + CN_soil_seq * CN_soil_slope
+CN_soil_trend <- as.data.frame(cbind(CN_soil_seq, CN_soil_trend))
+
+(plot_CN_soil <- ggplot(data = data, aes(x = Elevation, y = log(CN_soil))) +
+    geom_jitter(height = 0, aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_smooth(method = lm, color = "black") +
+    geom_line(data = CN_soil_trend, aes(x = CN_soil_seq, y = CN_soil_trend), 
+              col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
-    scale_y_continuous(name = "Soil Carbon/Nitrogen") +
+    ylab("Soil Carbon/Nitrogen") +
     guides(color = guide_legend("Fire History")))
-
-(plot_CN_soil_slope <- ggplot(data = data, aes(x = Slope, y = CN_soil)) +
-    geom_jitter(size = 2) +
-    scale_color_manual(values = c('red', 'blue')) +
-    geom_smooth(method = lm, color = "black") +
-    theme_few(base_size = 16) + 
-    scale_x_continuous(name = "Slope ()") +
-    scale_y_continuous(name = "Soil Carbon/Nitrogen"))
 
 ## soil inorganics
 ### Ca_soil
-Ca_soil_lm <- lm(as.formula(paste(dep_variables[16],
-                                 paste(ind_variables, collapse = "*"),
-                                 sep = "~")), data = data)
+Ca_soil_lm <- lmer(Ca_soil ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(Ca_soil_lm) ~ fitted(Ca_soil_lm))
-anova(Ca_soil_lm)
+Anova(Ca_soil_lm)
+summary(Ca_soil_lm) # N = 31
 
-(plot_Ca_soil_elev <- ggplot(data = data, aes(x = Elevation, y = Ca_soil)) +
+emtrends(Ca_soil_lm, ~ Elevation, var = "Elevation") # slope = -0.000615
+emmeans(Ca_soil_lm, ~ Elevation, at = list(Elevation = 0)) # intercept = 0.785
+
+Ca_soil_slope <- summary(emtrends(Ca_soil_lm, ~ Elevation, var = "Elevation"))[1, 2] 
+Ca_soil_intercept <- summary(emmeans(Ca_soil_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
+Ca_soil_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+Ca_soil_trend <- Ca_soil_intercept + Ca_soil_seq * Ca_soil_slope
+Ca_soil_trend <- as.data.frame(cbind(Ca_soil_seq, Ca_soil_trend))
+
+(plot_Ca_soil <- ggplot(data = data, aes(x = Elevation, y = Ca_soil)) +
     geom_jitter(aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_smooth(method = lm, color = "black") +
+    geom_line(data = Ca_soil_trend, aes(x = Ca_soil_seq, y = Ca_soil_trend), 
+              col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
     ylab(expression("Soil Calcium (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")))
 
-# Ca_slope_fire <- summary(emtrends(Ca_soil_lm, ~ Fire, var = "Slope"))[1, 2]
-# Ca_intercept_fire <- summary(emmeans(Ca_soil_lm, ~ Fire, at = list(Slope = 0)))[1, 2]
-# Ca_seq_fire <- seq(min(data$Slope, na.rm = T), max(data$Slope, na.rm = T), 0.01)
-# Ca_trend_fire <- Ca_intercept_fire + Ca_seq_fire * Ca_slope_fire
-# Ca_trend_fire <- as.data.frame(cbind(Ca_seq_fire, Ca_trend_fire))
-# 
-# Ca_slope_nofire <- summary(emtrends(Ca_soil_lm, ~ Fire, var = "Slope"))[2, 2]
-# Ca_intercept_nofire <- summary(emmeans(Ca_soil_lm, ~ Fire, at = list(Slope = 0)))[2, 2]
-# Ca_seq_nofire <- seq(min(data$Slope, na.rm = T), max(data$Slope, na.rm = T), 0.01)
-# Ca_trend_nofire <- Ca_intercept_nofire + Ca_seq_nofire * Ca_slope_nofire
-# Ca_trend_nofire <- as.data.frame(cbind(Ca_seq_nofire, Ca_trend_nofire))
-# 
-# (plot_Ca_soil_slope <- ggplot(data = data, aes(x = Slope, y = Ca_soil)) +
-#     geom_jitter(aes(color = Fire), size = 2) +
-#     scale_color_manual(values = c('red', 'blue')) +
-#     geom_line(data = Ca_trend_fire, aes(x = Ca_seq_fire, y = Ca_trend_fire), 
-#               col = 'red', lwd = 2, alpha = 0.5) +
-#     geom_line(data = Ca_trend_nofire, aes(x = Ca_seq_nofire, y = Ca_trend_nofire), 
-#               col = 'blue', lwd = 2, alpha = 0.5) +
-#     theme_few(base_size = 16) + 
-#     scale_x_continuous(name = "Slope ()") +
-#     ylab(expression("Soil Calcium (mg g"^{-1}*")")) +
-#     guides(color = guide_legend("Fire History")))
-
 ### P_soil
-P_soil_lm <- lm(as.formula(paste(dep_variables[17],
-                                paste(ind_variables, collapse = "*"),
-                                sep = "~")), data = data)
+P_soil_lm <- lmer(log(P_soil) ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(P_soil_lm) ~ fitted(P_soil_lm))
-anova(P_soil_lm)
+Anova(P_soil_lm)
+summary(P_soil_lm) # N = 31
 
-(plot_P_soil_elev <- ggplot(data = data, aes(x = Elevation, y = P_soil)) +
+emtrends(P_soil_lm, ~ Elevation, var = "Elevation") # slope = -0.00107 
+emmeans(P_soil_lm, ~ Elevation, at = list(Elevation = 0)) # intercept = -5.4
+
+P_soil_slope <- summary(emtrends(P_soil_lm, ~ Elevation, var = "Elevation"))[1, 2] 
+P_soil_intercept <- summary(emmeans(P_soil_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
+P_soil_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+P_soil_trend <- P_soil_intercept + P_soil_seq * P_soil_slope
+P_soil_trend <- as.data.frame(cbind(P_soil_seq, P_soil_trend))
+
+(plot_P_soil <- ggplot(data = data, aes(x = Elevation, y = log(P_soil))) +
     geom_jitter(aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_smooth(method = lm, color = "black") +
+    geom_line(data = P_soil_trend, aes(x = P_soil_seq, y = P_soil_trend), 
+              col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
     ylab(expression("Soil Phosphorus (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")))
 
-# P_slope_fire <- summary(emtrends(P_soil_lm, ~ Fire, var = "Slope"))[1, 2] # slope = 0.2066
-# P_intercept_fire <- summary(emmeans(P_soil_lm, ~ Fire, at = list(Slope = 0)))[1, 2] # intercept = -10.4
-# P_seq_fire <- seq(min(data$Slope, na.rm = T), max(data$Slope, na.rm = T), 0.01)
-# P_trend_fire <- P_intercept_fire + P_seq_fire * P_slope_fire
-# P_trend_fire <- as.data.frame(cbind(P_seq_fire, P_trend_fire))
-# 
-# P_slope_nofire <- summary(emtrends(P_soil_lm, ~ Fire, var = "Slope"))[2, 2] # slope = -0.0287
-# P_intercept_nofire <- summary(emmeans(P_soil_lm, ~ Fire, at = list(Slope = 0)))[2, 2] # intercept = -5.59
-# P_seq_nofire <- seq(min(data$Slope, na.rm = T), max(data$Slope, na.rm = T), 0.01)
-# P_trend_nofire <- P_intercept_nofire + P_seq_nofire * P_slope_nofire
-# P_trend_nofire <- as.data.frame(cbind(P_seq_nofire, P_trend_nofire))
-# 
-# (plot_P_soil_slope <- ggplot(data = data, aes(x = Slope, y = P_soil)) +
-#     geom_jitter(aes(color = Fire), size = 2) +
-#     scale_color_manual(values = c('red', 'blue')) +
-#     geom_abline(slope = 0.2066, intercept = -10.4) +
-#     geom_abline(slope = -0.0287, intercept = -5.59) +
-#     # geom_line(data = P_trend_fire, aes(x = P_seq_fire, y = P_trend_fire), 
-#     #           col = 'red', lwd = 2, alpha = 0.5) +
-#     # geom_line(data = P_trend_nofire, aes(x = P_seq_nofire, y = P_trend_nofire), 
-#     #           col = 'blue', lwd = 2, alpha = 0.5) +
-#     theme_few(base_size = 16) + 
-#     scale_x_continuous(name = "Slope ()") +
-#     ylab(expression("Soil Phosphorus (mg g"^{-1}*")")) +
-#     guides(color = guide_legend("Fire History")))
-
 ### K_soil
-K_soil_lm <- lm(as.formula(paste(dep_variables[18],
-                                paste(ind_variables, collapse = "*"),
-                                sep = "~")), data = data)
+K_soil_lm <- lmer(K_soil ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(K_soil_lm) ~ fitted(K_soil_lm))
-anova(K_soil_lm)
+Anova(K_soil_lm)
+summary(K_soil_lm) # N = 31
 
-(plot_K_soil_elev <- ggplot(data = data, aes(x = Elevation, y = K_soil)) +
+emtrends(K_soil_lm, ~ Elevation, var = "Elevation") # slope = -0.000128
+emmeans(K_soil_lm, ~ Elevation, at = list(Elevation = 0)) # intercept = 0.276
+
+K_soil_slope <- summary(emtrends(K_soil_lm, ~ Elevation, var = "Elevation"))[1, 2] 
+K_soil_intercept <- summary(emmeans(K_soil_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
+K_soil_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+K_soil_trend <- K_soil_intercept + K_soil_seq * K_soil_slope
+K_soil_trend <- as.data.frame(cbind(K_soil_seq, K_soil_trend))
+
+(plot_K_soil <- ggplot(data = data, aes(x = Elevation, y = K_soil)) +
     geom_jitter(aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_smooth(method = lm, color = "black") +
+    geom_line(data = K_soil_trend, aes(x = K_soil_seq, y = K_soil_trend), 
+              col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
     ylab(expression("Soil Potassium (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")))
-
-(plot_K_soil_fire <- ggplot(data = data, aes(x = Fire, y = K_soil)) +
-    geom_jitter(aes(color = Fire), size = 2) +
-    scale_color_manual(values = c('red', 'blue')) +
-    geom_boxplot(outlier.color = NA, fill = NA) +
-    theme_few(base_size = 16) + 
-    scale_x_discrete(name = "Fire History") +
-    ylab(expression("Soil Potassium (mg g"^{-1}*")")) +
-    guides(color = "none"))
-
-ggplot(data, aes(x = Fire, y = K_soil)) + geom_boxplot()
 
 ### Mg_soil
-Mg_soil_lm <- lm(as.formula(paste(dep_variables[19],
-                                 paste(ind_variables, collapse = "*"),
-                                 sep = "~")), data = data)
+Mg_soil_lm <- lmer(Mg_soil ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(Mg_soil_lm) ~ fitted(Mg_soil_lm))
-anova(Mg_soil_lm)
-
-(plot_Mg_soil_elev <- ggplot(data = data, aes(x = Elevation, y = Mg_soil)) +
-    geom_jitter(aes(color = Fire), size = 2) +
-    scale_color_manual(values = c('red', 'blue')) +
-    geom_smooth(method = lm, color = "black") +
-    theme_few(base_size = 16) + 
-    scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
-    ylab(expression("Soil Magnesium (mg g"^{-1}*")")) +
-    guides(color = guide_legend("Fire History")))
-
-# Mg_slope_fire <- summary(emtrends(Mg_soil_lm, ~ Fire, var = "Slope"))[1, 2] # slope = 0.03235
-# Mg_intercept_fire <- summary(emmeans(Mg_soil_lm, ~ Fire, at = list(Slope = 0)))[1, 2] # intercept = -0.517
-# Mg_seq_fire <- seq(min(data$Slope, na.rm = T), max(data$Slope, na.rm = T), 0.01)
-# Mg_trend_fire <- Mg_intercept_fire + Mg_seq_fire * Mg_slope_fire
-# Mg_trend_fire <- as.data.frame(cbind(Mg_seq_fire, Mg_trend_fire))
-# 
-# Mg_slope_nofire <- summary(emtrends(Mg_soil_lm, ~ Fire, var = "Slope"))[2, 2] # slope = -0.00979
-# Mg_intercept_nofire <- summary(emmeans(Mg_soil_lm, ~ Fire, at = list(Slope = 0)))[2, 2] # intercept = 0.243
-# Mg_seq_nofire <- seq(min(data$Slope, na.rm = T), max(data$Slope, na.rm = T), 0.01)
-# Mg_trend_nofire <- Mg_intercept_nofire + Mg_seq_nofire * Mg_slope_nofire
-# Mg_trend_nofire <- as.data.frame(cbind(Mg_seq_nofire, Mg_trend_nofire))
-# 
-# (plot_Mg_soil_slope <- ggplot(data = data, aes(x = Slope, y = Mg_soil)) +
-#     geom_jitter(aes(color = Fire), size = 2) +
-#     scale_color_manual(values = c('red', 'blue')) +
-#     geom_line(data = Mg_trend_fire, aes(x = Mg_seq_fire, y = Mg_trend_fire),
-#               col = 'red', lwd = 2, alpha = 0.5) +
-#     geom_line(data = Mg_trend_nofire, aes(x = Mg_seq_nofire, y = Mg_trend_nofire),
-#               col = 'blue', lwd = 2, alpha = 0.5) +
-#     theme_few(base_size = 16) + 
-#     scale_x_continuous(name = "Slope ()") +
-#     ylab(expression("Soil Magnesium (mg g"^{-1}*")")) +
-#     guides(color = guide_legend("Fire History")))
+Anova(Mg_soil_lm)
+summary(Mg_soil_lm) # N = 31
 
 ### Al_soil
-Al_soil_lm <- lm(as.formula(paste(dep_variables[20],
-                                 paste(ind_variables, collapse = "*"),
-                                 sep = "~")), data = data)
+Al_soil_lm <- lmer(log(Al_soil) ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(Al_soil_lm) ~ fitted(Al_soil_lm))
-anova(Al_soil_lm)
+Anova(Al_soil_lm)
+summary(Al_soil_lm) # N = 31
 
-(plot_Al_soil_elev <- ggplot(data = data, aes(x = Elevation, y = Al_soil)) +
+emtrends(Al_soil_lm, ~ Fire, var = "Elevation") # fire = -0.00101 | no fire = 0.001
+emmeans(Al_soil_lm, ~ Fire, at = list(Elevation = 0)) # fire = -1.7 | no fire = -2.42
+
+Al_soil_f_slope <- summary(emtrends(Al_soil_lm, ~ Fire, var = "Elevation"))[1, 2] 
+Al_soil_f_intercept <- summary(emmeans(Al_soil_lm, ~ Fire, at = list(Elevation = 0)))[1, 2] 
+Al_soil_f_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+Al_soil_f_trend <- Al_soil_f_intercept + Al_soil_f_seq * Al_soil_f_slope
+Al_soil_f_trend <- as.data.frame(cbind(Al_soil_f_seq, Al_soil_f_trend))
+
+Al_soil_nf_slope <- summary(emtrends(Al_soil_lm, ~ Fire, var = "Elevation"))[2, 2] 
+Al_soil_nf_intercept <- summary(emmeans(Al_soil_lm, ~ Fire, at = list(Elevation = 0)))[2, 2] 
+Al_soil_nf_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+Al_soil_nf_trend <- Al_soil_nf_intercept + Al_soil_nf_seq * Al_soil_nf_slope
+Al_soil_nf_trend <- as.data.frame(cbind(Al_soil_nf_seq, Al_soil_nf_trend))
+
+(plot_Al_soil <- ggplot(data = data, aes(x = Elevation, y = log(Al_soil))) +
     geom_jitter(aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_smooth(method = lm, color = "black") +
+    geom_line(data = Al_soil_f_trend, aes(x = Al_soil_f_seq, y = Al_soil_f_trend), 
+              col = 'red', lwd = 2, alpha = 0.8) +
+    geom_line(data = Al_soil_nf_trend, aes(x = Al_soil_nf_seq, y = Al_soil_nf_trend), 
+              col = 'blue', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
     ylab(expression("Soil Aluminum (mg g"^{-1}*")")) +
     guides(color = guide_legend("Fire History")))
 
-# Al_slope_fire <- summary(emtrends(Al_soil_lm, ~ Fire, var = "Slope"))[1, 2] # slope = -0.1056
-# Al_intercept_fire <- summary(emmeans(Al_soil_lm, ~ Fire, at = list(Slope = 0)))[1, 2] # intercept = -0.0278
-# Al_seq_fire <- seq(min(data$Slope, na.rm = T), max(data$Slope, na.rm = T), 0.01)
-# Al_trend_fire <- Al_intercept_fire + Al_seq_fire * Al_slope_fire
-# Al_trend_fire <- as.data.frame(cbind(Al_seq_fire, Al_trend_fire))
-# 
-# Al_slope_nofire <- summary(emtrends(Al_soil_lm, ~ Fire, var = "Slope"))[2, 2] # slope = -0.0247
-# Al_intercept_nofire <- summary(emmeans(Al_soil_lm, ~ Fire, at = list(Slope = 0)))[2, 2] # intercept = -2.0219
-# Al_seq_nofire <- seq(min(data$Slope, na.rm = T), max(data$Slope, na.rm = T), 0.01)
-# Al_trend_nofire <- Al_intercept_nofire + Al_seq_nofire * Al_slope_nofire
-# Al_trend_nofire <- as.data.frame(cbind(Al_seq_nofire, Al_trend_nofire))
-# 
-# (plot_Al_soil_slope <- ggplot(data = data, aes(x = Slope, y = Al_soil)) +
-#     geom_jitter(aes(color = Fire), size = 2) +
-#     scale_color_manual(values = c('red', 'blue')) +
-#     geom_line(data = Al_trend_fire, aes(x = Al_seq_fire, y = Al_trend_fire),
-#               col = 'red', lwd = 2, alpha = 0.5) +
-#     geom_line(data = Al_trend_nofire, aes(x = Al_seq_nofire, y = Al_trend_nofire),
-#               col = 'blue', lwd = 2, alpha = 0.5) +
-#     theme_few(base_size = 16) + 
-#     scale_x_continuous(name = "Slope ()") +
-#     ylab(expression("Soil Aluminum (mg g"^{-1}*")")) +
-#     guides(color = guide_legend("Fire History")))
-
 ### Zn_soil
-Zn_soil_lm <- lm(as.formula(paste(dep_variables[21],
-                                 paste(ind_variables, collapse = "*"),
-                                 sep = "~")), data = data)
+Zn_soil_lm <- lmer(log(Zn_soil) ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(Zn_soil_lm) ~ fitted(Zn_soil_lm))
-anova(Zn_soil_lm)
+Anova(Zn_soil_lm)
+summary(Zn_soil_lm) # N = 31
 
-(plots_soil_elev <- plot_C_soil + plot_Ca_soil_elev + 
-    plot_P_soil_elev + plot_K_soil_elev + plot_Mg_soil_elev + plot_Al_soil_elev +
+emtrends(Zn_soil_lm, ~ Fire, var = "Elevation") # fire = -0.001267 | no fire = 0.000532
+emmeans(Zn_soil_lm, ~ Fire, at = list(Elevation = 0)) # fire = -5.34 | no fire = -6.03
+
+Zn_soil_f_slope <- summary(emtrends(Zn_soil_lm, ~ Fire, var = "Elevation"))[1, 2] 
+Zn_soil_f_intercept <- summary(emmeans(Zn_soil_lm, ~ Fire, at = list(Elevation = 0)))[1, 2] 
+Zn_soil_f_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+Zn_soil_f_trend <- Zn_soil_f_intercept + Zn_soil_f_seq * Zn_soil_f_slope
+Zn_soil_f_trend <- as.data.frame(cbind(Zn_soil_f_seq, Zn_soil_f_trend))
+
+Zn_soil_nf_slope <- summary(emtrends(Zn_soil_lm, ~ Fire, var = "Elevation"))[2, 2] 
+Zn_soil_nf_intercept <- summary(emmeans(Zn_soil_lm, ~ Fire, at = list(Elevation = 0)))[2, 2] 
+Zn_soil_nf_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+Zn_soil_nf_trend <- Zn_soil_nf_intercept + Zn_soil_nf_seq * Zn_soil_nf_slope
+Zn_soil_nf_trend <- as.data.frame(cbind(Zn_soil_nf_seq, Zn_soil_nf_trend))
+
+(plot_Zn_soil <- ggplot(data = data, aes(x = Elevation, y = log(Zn_soil))) +
+    geom_jitter(aes(color = Fire), size = 2) +
+    scale_color_manual(values = c('red', 'blue')) +
+    geom_line(data = Zn_soil_f_trend, aes(x = Zn_soil_f_seq, y = Zn_soil_f_trend), 
+              col = 'red', lwd = 2, alpha = 0.8) +
+    geom_line(data = Zn_soil_nf_trend, aes(x = Zn_soil_nf_seq, y = Zn_soil_nf_trend), 
+              col = 'blue', lwd = 2, alpha = 0.8) +
+    theme_few(base_size = 16) + 
+    scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
+    ylab(expression("Soil Zinc (mg g"^{-1}*")")) +
+    guides(color = guide_legend("Fire History")))
+
+(plots_soil_CN <- plot_C_soil + plot_CN_soil +
+    plot_layout(guides = "collect") +
+    plot_annotation(tag_levels = 'A') & 
+    theme(plot.tag = element_text(size = 16)))
+
+(plots_soil <- (plot_Ca_soil + plot_K_soil + plot_P_soil) / (plot_Al_soil + plot_Zn_soil) +
     plot_layout(guides = "collect") +
     plot_annotation(tag_levels = 'A') & 
     theme(plot.tag = element_text(size = 16)))
 
 ## soil characteristics
 ### pH
-pH_lm <- lm(as.formula(paste(dep_variables[22],
-                            paste(ind_variables, collapse = "*"),
-                            sep = "~")), data = data)
-#plot(resid(pH_lm) ~ fitted(pH_lm))
-anova(pH_lm)
+pH_lm <- lmer(pH ~ Elevation * Fire + (1 | Site), data = data)
+# plot(resid(pH_lm) ~ fitted(pH_lm))
+Anova(pH_lm)
 
 ### CEC
-CEC_lm <- lm(as.formula(paste(dep_variables[23],
-                             paste(ind_variables, collapse = "*"),
-                             sep = "~")), data = data)
+CEC_lm <- lmer(CEC ~ Elevation * Fire + (1 | Site), data = data)
 #plot(resid(CEC_lm) ~ fitted(CEC_lm))
-anova(CEC_lm)
+Anova(CEC_lm)
 
 ## soil characteristics
 ### retention
-retention_lm <- lm(as.formula(paste(dep_variables[27],
-                                   paste(ind_variables, collapse = "*"),
-                                   sep = "~")), data = data)
-#plot(resid(retention_lm) ~ fitted(retention_lm))
-anova(retention_lm)
-
-(plot_retention <- ggplot(data = data, aes(x = Slope, y = Retention)) +
-    geom_jitter(size = 2) +
-    geom_smooth(method = lm, color = "black") +
-    theme_few(base_size = 16) + 
-    scale_x_continuous(name = "Slope (°)") +
-    scale_y_continuous(name = "Soil Water Retention (%)"))
+retention_lm <- lmer(asin(sqrt(0.01 * Retention)) ~ Elevation * Fire + (1 | Site), data = data)
+# plot(resid(retention_lm) ~ fitted(retention_lm))
+Anova(retention_lm)
+summary(retention_lm) # N = 40
 
 #### tables and posthoc ####
 
@@ -647,40 +606,42 @@ write.csv(topography, "tables/topography.csv")
 
 ### allometry
 #### create table with degrees of f reedom, f-value, p-value results from linear models
-write.csv(cbind(as.matrix(anova(height_lm)[, c(1, 4, 5)]), 
-                as.matrix(anova(canopy_lm)[, c(1, 4, 5)]), 
-                as.matrix(anova(diam_lm)[, c(1, 4, 5)]),
-                as.matrix(anova(density_lm)[, c(1, 4, 5)])),
+write.csv(cbind(as.matrix(Anova(slope_lm)[, c(1, 2, 3)]), 
+                as.matrix(Anova(height_lm)[, c(1, 2, 3)]), 
+                as.matrix(Anova(canopy_lm)[, c(1, 2, 3)]), 
+                as.matrix(Anova(diam_lm)[, c(1, 2, 3)]),
+                as.matrix(Anova(density_lm)[, c(1, 2, 3)])),
           'tables/allometry.csv')
 
 ### foliar organics
 #### create table with degrees of f reedom, f-value, p-value results from linear models
-write.csv(cbind(as.matrix(anova(C_foliar_lm)[, c(1, 4, 5)]), 
-                as.matrix(anova(N_foliar_lm)[, c(1, 4, 5)]), 
-                as.matrix(anova(CN_foliar_lm)[, c(1, 4, 5)])),
+write.csv(cbind(as.matrix(Anova(C_foliar_lm)[, c(1, 2, 3)]), 
+                as.matrix(Anova(N_foliar_lm)[, c(1, 2, 3)]), 
+                as.matrix(Anova(CN_foliar_lm)[, c(1, 2, 3)])),
           'tables/foliar_cn.csv')
 
 ### foliar inorganics
 #### create table with degrees of f reedom, f-value, p-value results from linear models
-write.csv(cbind(as.matrix(anova(Ca_foliar_lm)[, c(1, 4, 5)]), 
-                as.matrix(anova(P_foliar_lm)[, c(1, 4, 5)]), 
-                as.matrix(anova(K_foliar_lm)[, c(1, 4, 5)]),
-                as.matrix(anova(Mg_foliar_lm)[, c(1, 4, 5)]),
-                as.matrix(anova(Al_foliar_lm)[, c(1, 4, 5)]),
-                as.matrix(anova(Zn_foliar_lm)[, c(1, 4, 5)])),
+write.csv(cbind(as.matrix(Anova(Ca_foliar_lm)[, c(1, 2, 3)]), 
+                as.matrix(Anova(P_foliar_lm)[, c(1, 2, 3)]), 
+                as.matrix(Anova(K_foliar_lm)[, c(1, 2, 3)]),
+                as.matrix(Anova(Mg_foliar_lm)[, c(1, 2, 3)]),
+                as.matrix(Anova(Al_foliar_lm)[, c(1, 2, 3)]),
+                as.matrix(Anova(Zn_foliar_lm)[, c(1, 2, 3)])),
           'tables/foliar_inorganics.csv')
 
 ### foliar isotopes
 #### create table with degrees of f reedom, f-value, p-value results from linear models
-write.csv(cbind(as.matrix(anova(d13C_lm)[, c(1, 4, 5)]), 
-                as.matrix(anova(d15N_lm)[, c(4, 5)])),
+write.csv(cbind(as.matrix(Anova(d13C_lm)[, c(1, 2, 3)]), 
+                as.matrix(Anova(d15N_lm)[, c(1, 2, 3)])),
           'tables/foliar_isotope.csv')
 
 ### soil organics
 #### create table with degrees of f reedom, f-value, p-value results from linear models
-write.csv(cbind(as.matrix(anova(C_soil_lm)[, c(1, 4, 5)]), 
-                as.matrix(anova(N_soil_lm)[, c(1, 4, 5)]), 
-                as.matrix(anova(CN_soil_lm)[, c(1, 4, 5)])),
+write.csv(cbind(as.matrix(Anova(C_soil_lm)[, c(1, 2, 3)]), 
+                as.matrix(Anova(N_soil_lm)[, c(1, 2, 3)]), 
+                as.matrix(Anova(CN_soil_lm)[, c(1, 2, 3)]),
+                as.matrix(Anova(retention_lm)[, c(1, 2, 3)])),
           'tables/soil_organics.csv')
 
 (summary(emmeans(canopy_lm, ~elevation_fac))[1,2] - summary(emmeans(canopy_lm, ~elevation_fac))[2,2])/ summary(emmeans(canopy_lm, ~elevation_fac))[2,2]
@@ -697,44 +658,42 @@ write.csv(cbind(as.matrix(anova(C_soil_lm)[, c(1, 4, 5)]),
 (summary(emmeans(CN_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(CN_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(CN_soil_lm, ~elevation_fac))[2,2]
 
 ### soil inorganics
-write.csv(cbind(as.matrix(anova(Ca_soil_lm)[, c(1, 4, 5)]), 
-                as.matrix(anova(P_soil_lm)[, c(4, 5)]), 
-                as.matrix(anova(K_soil_lm)[, c(4, 5)]),
-                as.matrix(anova(Mg_soil_lm)[, c(4, 5)]),
-                as.matrix(anova(Al_soil_lm)[, c(4, 5)]),
-                as.matrix(anova(Zn_soil_lm)[, c(4, 5)])),
+write.csv(cbind(as.matrix(Anova(Ca_soil_lm)[, c(1, 2, 3)]), 
+                as.matrix(Anova(P_soil_lm)[, c(1, 2, 3)]), 
+                as.matrix(Anova(K_soil_lm)[, c(1, 2, 3)]),
+                as.matrix(Anova(Mg_soil_lm)[, c(1, 2, 3)]),
+                as.matrix(Anova(Al_soil_lm)[, c(1, 2, 3)]),
+                as.matrix(Anova(Zn_soil_lm)[, c(1, 2, 3)])),
           'tables/soil_inorganics.csv')
 
 (summary(emmeans(K_soil_lm, ~fire))[1,2] - summary(emmeans(K_soil_lm, ~fire))[2,2])/ summary(emmeans(K_soil_lm, ~fire))[2,2]
 (summary(emmeans(Ca_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(Ca_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(Ca_soil_lm, ~elevation_fac))[2,2]
 
 ## soil characteristics
-write.csv(cbind(as.matrix(anova(retention_lm)[, c(1, 4, 5)]), 
-                as.matrix(anova(pH_lm)[, c(4, 5)]), 
-                as.matrix(anova(CEC_lm)[, c(4, 5)])),
+write.csv(cbind(as.matrix(Anova(retention_lm)[, c(1, 2, 3)]), 
+                as.matrix(Anova(pH_lm)[, c(1, 2, 3)]), 
+                as.matrix(Anova(CEC_lm)[, c(1, 2, 3)])),
           'tables/soil_char.csv')
 
 #### save graphs ####
 
+## slope
+ggsave("plots/plot_slope.jpeg", plot = plot_slope,
+       width = 28, height = 18, units = "cm", dpi = 600) # 1 panel
+
 ## allometry
 ggsave("plots/plots_allometry.jpeg", plot = plots_allometry,
-       width = 28, height = 18, units = "cm", dpi = 600) # 3 panels
-
-## foliar isotopes
-ggsave("plots/plots_isotopes.jpeg", plot = plots_isotopes,
-       width = 42, height = 25, units = "cm", dpi = 600) # 2 panels
+       width = 28, height = 18, units = "cm", dpi = 600) # 4 panels
 
 ## foliar nutrients
 ggsave("plots/plots_foliar.jpeg", plot = plots_foliar,
-       width = 45, height = 25, units = "cm", dpi = 600) # 5 panels
+       width = 45, height = 25, units = "cm", dpi = 600) # 4 panels
+
+## soil CN
+ggsave("plots/plots_soil_CN.jpeg", plot = plots_soil_CN,
+       width = 42, height = 25, units = "cm", dpi = 600) # 2 panels
 
 ## soil nutrients
-ggsave("plots/plots_soil.jpeg", plot = plots_soil_elev,
-       width = 42, height = 25, units = "cm", dpi = 600) # 6 panels
-
-## soil retention
-ggsave("plots/plots_retention.jpeg", plot = plot_retention,
-       width = 42, height = 25, units = "cm", dpi = 600) # 1 panel
-
-
+ggsave("plots/plots_soil.jpeg", plot = plots_soil,
+       width = 42, height = 25, units = "cm", dpi = 600) # 5 panels
 
