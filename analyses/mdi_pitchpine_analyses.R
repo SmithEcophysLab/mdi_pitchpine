@@ -167,29 +167,21 @@ diam_lm <- lm(log(Diam) ~ Elevation * Fire , data = data)
 #plot(resid(diam_lm) ~ fitted(diam_lm))
 Anova(diam_lm)
 
-diam_f_slope <- summary(emtrends(diam_lm, ~ Fire, var = "Elevation"))[1, 2] 
-diam_f_intercept <- summary(emmeans(diam_lm, ~ Fire, at = list(Elevation = 0)))[1, 2] 
-diam_f_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
-diam_f_trend <- diam_f_intercept + diam_f_seq * diam_f_slope
-diam_f_trend <- as.data.frame(cbind(diam_f_seq, diam_f_trend))
-
-diam_nf_slope <- summary(emtrends(diam_lm, ~ Fire, var = "Elevation"))[2, 2] 
-diam_nf_intercept <- summary(emmeans(diam_lm, ~ Fire, at = list(Elevation = 0)))[2, 2] 
-diam_nf_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
-diam_nf_trend <- diam_nf_intercept + diam_nf_seq * diam_nf_slope
-diam_nf_trend <- as.data.frame(cbind(diam_nf_seq, diam_nf_trend))
+diam_slope <- summary(emtrends(diam_lm, ~ Elevation, var = "Elevation"))[1, 2] 
+diam_intercept <- summary(emmeans(diam_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
+diam_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+diam_trend <- diam_intercept + diam_seq * diam_slope
+diam_trend <- as.data.frame(cbind(diam_seq, diam_trend))
 
 (plot_diam <- ggplot(data = data, aes(x = Elevation, y = log(Diam))) +
-        geom_jitter(aes(color = Fire), size = 2) +
-        scale_color_manual(values = c('red', 'blue')) +
-        geom_line(data = diam_f_trend, aes(x = diam_f_seq, y = diam_f_trend), 
-                  col = 'red', lwd = 2, alpha = 0.8) +
-        geom_line(data = diam_nf_trend, aes(x = diam_nf_seq, y = diam_nf_trend), 
-                  col = 'blue', lwd = 2, alpha = 0.8) +
-        theme_few(base_size = 16) +
-        scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
-        scale_y_continuous(name = "DBH (cm)", limits = c(1, 5)) +
-        guides(color = guide_legend("Fire History")))
+    geom_jitter(aes(color = Fire), size = 2) +
+    scale_color_manual(values = c('red', 'blue')) +
+    geom_line(data = diam_trend, aes(x = diam_seq, y = diam_trend), 
+              col = 'black', lwd = 2, alpha = 0.8) +
+    theme_few(base_size = 16) + 
+    scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
+    scale_y_continuous(name = "DBH (cm)") +
+    guides(color = guide_legend("Fire History")))
 
 ### density
 density_lm <- lm(mean_distance ~ Elevation * Fire , data = data)
@@ -332,25 +324,25 @@ K_foliar_lm <- lm(log(K_foliar) ~ Elevation * Fire , data = data)
 #plot(resid(K_foliar_lm) ~ fitted(K_foliar_lm))
 Anova(K_foliar_lm)
 
-K_foliar_f_slope <- summary(emtrends(K_foliar_lm, ~ Fire, var = "Elevation"))[1, 2] 
-K_foliar_f_intercept <- summary(emmeans(K_foliar_lm, ~ Fire, at = list(Elevation = 0)))[1, 2] 
-K_foliar_f_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
-K_foliar_f_trend <- K_foliar_f_intercept + K_foliar_f_seq * K_foliar_f_slope
-K_foliar_f_trend <- as.data.frame(cbind(K_foliar_f_seq, K_foliar_f_trend))
-
-K_foliar_nf_slope <- summary(emtrends(K_foliar_lm, ~ Fire, var = "Elevation"))[2, 2] 
-K_foliar_nf_intercept <- summary(emmeans(K_foliar_lm, ~ Fire, at = list(Elevation = 0)))[2, 2] 
-K_foliar_nf_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
-K_foliar_nf_trend <- K_foliar_nf_intercept + K_foliar_nf_seq * K_foliar_nf_slope
-K_foliar_nf_trend <- as.data.frame(cbind(K_foliar_nf_seq, K_foliar_nf_trend))
+# K_foliar_f_slope <- summary(emtrends(K_foliar_lm, ~ Fire, var = "Elevation"))[1, 2] 
+# K_foliar_f_intercept <- summary(emmeans(K_foliar_lm, ~ Fire, at = list(Elevation = 0)))[1, 2] 
+# K_foliar_f_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+# K_foliar_f_trend <- K_foliar_f_intercept + K_foliar_f_seq * K_foliar_f_slope
+# K_foliar_f_trend <- as.data.frame(cbind(K_foliar_f_seq, K_foliar_f_trend))
+# 
+# K_foliar_nf_slope <- summary(emtrends(K_foliar_lm, ~ Fire, var = "Elevation"))[2, 2] 
+# K_foliar_nf_intercept <- summary(emmeans(K_foliar_lm, ~ Fire, at = list(Elevation = 0)))[2, 2] 
+# K_foliar_nf_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+# K_foliar_nf_trend <- K_foliar_nf_intercept + K_foliar_nf_seq * K_foliar_nf_slope
+# K_foliar_nf_trend <- as.data.frame(cbind(K_foliar_nf_seq, K_foliar_nf_trend))
 
 (plot_K_foliar <- ggplot(data = data, aes(x = Elevation, y = log(K_foliar))) +
     geom_jitter(aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_line(data = K_foliar_f_trend, aes(x = K_foliar_f_seq, y = K_foliar_f_trend), 
-              col = 'red', lwd = 2, alpha = 0.8) +
-    geom_line(data = K_foliar_nf_trend, aes(x = K_foliar_nf_seq, y = K_foliar_nf_trend), 
-              col = 'blue', lwd = 2, alpha = 0.8) +
+    # geom_line(data = K_foliar_f_trend, aes(x = K_foliar_f_seq, y = K_foliar_f_trend), 
+    #           col = 'red', lwd = 2, alpha = 0.8) +
+    # geom_line(data = K_foliar_nf_trend, aes(x = K_foliar_nf_seq, y = K_foliar_nf_trend), 
+    #           col = 'blue', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
     ylab(expression("Foliar Potassium (mg g"^{-1}*")")) +
@@ -454,17 +446,17 @@ CN_soil_lm <- lm(log(CN_soil) ~ Elevation * Fire , data = data)
 #plot(resid(CN_soil_lm) ~ fitted(CN_soil_lm))
 Anova(CN_soil_lm)
 
-CN_soil_slope <- summary(emtrends(CN_soil_lm, ~ Elevation, var = "Elevation"))[1, 2] 
-CN_soil_intercept <- summary(emmeans(CN_soil_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
-CN_soil_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
-CN_soil_trend <- CN_soil_intercept + CN_soil_seq * CN_soil_slope
-CN_soil_trend <- as.data.frame(cbind(CN_soil_seq, CN_soil_trend))
+# CN_soil_slope <- summary(emtrends(CN_soil_lm, ~ Elevation, var = "Elevation"))[1, 2] 
+# CN_soil_intercept <- summary(emmeans(CN_soil_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
+# CN_soil_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+# CN_soil_trend <- CN_soil_intercept + CN_soil_seq * CN_soil_slope
+# CN_soil_trend <- as.data.frame(cbind(CN_soil_seq, CN_soil_trend))
 
 (plot_CN_soil <- ggplot(data = data, aes(x = Elevation, y = log(CN_soil))) +
     geom_jitter(height = 0, aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_line(data = CN_soil_trend, aes(x = CN_soil_seq, y = CN_soil_trend), 
-              col = 'black', lwd = 2, alpha = 0.8) +
+    # geom_line(data = CN_soil_trend, aes(x = CN_soil_seq, y = CN_soil_trend), 
+    #           col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
     ylab("Soil Carbon/Nitrogen") +
@@ -497,17 +489,17 @@ P_soil_lm <- lm(log(P_soil) ~ Elevation * Fire , data = data)
 #plot(resid(P_soil_lm) ~ fitted(P_soil_lm))
 Anova(P_soil_lm)
 
-P_soil_slope <- summary(emtrends(P_soil_lm, ~ Elevation, var = "Elevation"))[1, 2] 
-P_soil_intercept <- summary(emmeans(P_soil_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
-P_soil_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
-P_soil_trend <- P_soil_intercept + P_soil_seq * P_soil_slope
-P_soil_trend <- as.data.frame(cbind(P_soil_seq, P_soil_trend))
+# P_soil_slope <- summary(emtrends(P_soil_lm, ~ Elevation, var = "Elevation"))[1, 2] 
+# P_soil_intercept <- summary(emmeans(P_soil_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
+# P_soil_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+# P_soil_trend <- P_soil_intercept + P_soil_seq * P_soil_slope
+# P_soil_trend <- as.data.frame(cbind(P_soil_seq, P_soil_trend))
 
 (plot_P_soil <- ggplot(data = data, aes(x = Elevation, y = log(P_soil))) +
     geom_jitter(aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_line(data = P_soil_trend, aes(x = P_soil_seq, y = P_soil_trend), 
-              col = 'black', lwd = 2, alpha = 0.8) +
+    # geom_line(data = P_soil_trend, aes(x = P_soil_seq, y = P_soil_trend), 
+    #           col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
     ylab(expression("Soil Phosphorus (mg g"^{-1}*")")) +
@@ -518,17 +510,17 @@ K_soil_lm <- lm(K_soil ~ Elevation * Fire , data = data)
 #plot(resid(K_soil_lm) ~ fitted(K_soil_lm))
 Anova(K_soil_lm)
 
-K_soil_slope <- summary(emtrends(K_soil_lm, ~ Elevation, var = "Elevation"))[1, 2] 
-K_soil_intercept <- summary(emmeans(K_soil_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
-K_soil_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
-K_soil_trend <- K_soil_intercept + K_soil_seq * K_soil_slope
-K_soil_trend <- as.data.frame(cbind(K_soil_seq, K_soil_trend))
+# K_soil_slope <- summary(emtrends(K_soil_lm, ~ Elevation, var = "Elevation"))[1, 2] 
+# K_soil_intercept <- summary(emmeans(K_soil_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
+# K_soil_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+# K_soil_trend <- K_soil_intercept + K_soil_seq * K_soil_slope
+# K_soil_trend <- as.data.frame(cbind(K_soil_seq, K_soil_trend))
 
 (plot_K_soil <- ggplot(data = data, aes(x = Elevation, y = K_soil)) +
     geom_jitter(aes(color = Fire), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
-    geom_line(data = K_soil_trend, aes(x = K_soil_seq, y = K_soil_trend), 
-              col = 'black', lwd = 2, alpha = 0.8) +
+    # geom_line(data = K_soil_trend, aes(x = K_soil_seq, y = K_soil_trend), 
+    #           col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
     ylab(expression("Soil Potassium (mg g"^{-1}*")")) +
@@ -539,17 +531,17 @@ Mg_soil_lm <- lm(Mg_soil ~ Elevation * Fire , data = data)
 #plot(resid(Mg_soil_lm) ~ fitted(Mg_soil_lm))
 Anova(Mg_soil_lm)
 
-Mg_soil_slope <- summary(emtrends(Mg_soil_lm, ~ Elevation, var = "Elevation"))[1, 2] 
-Mg_soil_intercept <- summary(emmeans(Mg_soil_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
-Mg_soil_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
-Mg_soil_trend <- Mg_soil_intercept + Mg_soil_seq * Mg_soil_slope
-Mg_soil_trend <- as.data.frame(cbind(Mg_soil_seq, Mg_soil_trend))
+# Mg_soil_slope <- summary(emtrends(Mg_soil_lm, ~ Elevation, var = "Elevation"))[1, 2] 
+# Mg_soil_intercept <- summary(emmeans(Mg_soil_lm, ~ Elevation, at = list(Elevation = 0)))[1, 2] 
+# Mg_soil_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+# Mg_soil_trend <- Mg_soil_intercept + Mg_soil_seq * Mg_soil_slope
+# Mg_soil_trend <- as.data.frame(cbind(Mg_soil_seq, Mg_soil_trend))
 
 (plot_Mg_soil <- ggplot(data = data, aes(x = Elevation, y = Mg_soil)) +
         geom_jitter(aes(color = Fire), size = 2) +
         scale_color_manual(values = c('red', 'blue')) +
-        geom_line(data = Mg_soil_trend, aes(x = Mg_soil_seq, y = Mg_soil_trend), 
-                  col = 'black', lwd = 2, alpha = 0.8) +
+        # geom_line(data = Mg_soil_trend, aes(x = Mg_soil_seq, y = Mg_soil_trend), 
+        #           col = 'black', lwd = 2, alpha = 0.8) +
         theme_few(base_size = 16) + 
         scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
         ylab(expression("Soil Magnesium (mg g"^{-1}*")")) +
@@ -642,68 +634,68 @@ retention_nf_trend <- as.data.frame(cbind(retention_nf_seq, retention_nf_trend))
 ### topography
 #### create table with mean latitude, longitude, elevation, slope, and aspect for each site
 topography <- data %>% group_by(Site) %>% summarise_at(vars(Latitude, Longitude, Elevation, Slope, Aspect), mean, na.rm = TRUE)
-write.csv(topography, "tables/topography.csv")
+# write.csv(topography, "tables/topography.csv")
 
 ### allometry
 #### create table with degrees of f reedom, f-value, p-value results from linear models
-write.csv(cbind(as.matrix(as.data.frame(Anova(canopy_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(diam_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(density_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(slope_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(height_lm))[, c(2:4)])),
-          'tables/allometry.csv')
+# write.csv(cbind(as.matrix(as.data.frame(Anova(canopy_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(diam_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(density_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(slope_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(height_lm))[, c(2:4)])),
+#           'tables/allometry.csv')
 
 ### foliar organics
 #### create table with degrees of f reedom, f-value, p-value results from linear models
-write.csv(cbind(as.matrix(as.data.frame(Anova(d13C_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(d15N_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(C_foliar_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(N_foliar_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(CN_foliar_lm))[, c(2:4)])),
-          'tables/foliar_organics.csv')
+# write.csv(cbind(as.matrix(as.data.frame(Anova(d13C_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(d15N_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(C_foliar_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(N_foliar_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(CN_foliar_lm))[, c(2:4)])),
+#           'tables/foliar_organics.csv')
 
 ### foliar inorganics
 #### create table with degrees of f reedom, f-value, p-value results from linear models
-write.csv(cbind(as.matrix(as.data.frame(Anova(Al_foliar_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(Ca_foliar_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(K_foliar_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(Mg_foliar_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(P_foliar_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(Zn_foliar_lm))[, c(2:4)])),
-          'tables/foliar_inorganics.csv')
+# write.csv(cbind(as.matrix(as.data.frame(Anova(Al_foliar_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(Ca_foliar_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(K_foliar_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(Mg_foliar_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(P_foliar_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(Zn_foliar_lm))[, c(2:4)])),
+#           'tables/foliar_inorganics.csv')
 
 ### soil organics
 #### create table with degrees of f reedom, f-value, p-value results from linear models
-write.csv(cbind(as.matrix(as.data.frame(Anova(C_soil_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(N_soil_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(CN_soil_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(retention_lm))[, c(2:4)])),
-          'tables/soil_organics.csv')
+# write.csv(cbind(as.matrix(as.data.frame(Anova(C_soil_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(N_soil_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(CN_soil_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(retention_lm))[, c(2:4)])),
+#           'tables/soil_organics.csv')
 
-(summary(emmeans(canopy_lm, ~elevation_fac))[1,2] - summary(emmeans(canopy_lm, ~elevation_fac))[2,2])/ summary(emmeans(canopy_lm, ~elevation_fac))[2,2]
-
-(summary(emmeans(P_foliar_lm, ~fire))[1,2] - summary(emmeans(P_foliar_lm, ~fire))[2,2])/ summary(emmeans(P_foliar_lm, ~fire))[2,2]
-(summary(emmeans(K_foliar_lm, ~fire))[1,2] - summary(emmeans(K_foliar_lm, ~fire))[2,2])/ summary(emmeans(K_foliar_lm, ~fire))[2,2]
-(summary(emmeans(Ca_foliar_lm, ~elevation_fac))[1,2] - summary(emmeans(Ca_foliar_lm, ~elevation_fac))[2,2])/ summary(emmeans(Ca_foliar_lm, ~elevation_fac))[2,2]
-(summary(emmeans(Zn_foliar_lm, ~elevation_fac))[1,2] - summary(emmeans(Zn_foliar_lm, ~elevation_fac))[2,2])/ summary(emmeans(Zn_foliar_lm, ~elevation_fac))[2,2]
-
-(summary(emmeans(d13C_lm, ~elevation_fac))[1,2] - summary(emmeans(d13C_lm, ~elevation_fac))[2,2])/ summary(emmeans(d13C_lm, ~elevation_fac))[2,2]
-
-(summary(emmeans(C_soil_lm, ~fire))[1,2] - summary(emmeans(C_soil_lm, ~fire))[2,2])/ summary(emmeans(C_soil_lm, ~fire))[2,2]
-(summary(emmeans(C_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(C_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(C_soil_lm, ~elevation_fac))[2,2]
-(summary(emmeans(CN_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(CN_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(CN_soil_lm, ~elevation_fac))[2,2]
+# (summary(emmeans(canopy_lm, ~elevation_fac))[1,2] - summary(emmeans(canopy_lm, ~elevation_fac))[2,2])/ summary(emmeans(canopy_lm, ~elevation_fac))[2,2]
+# 
+# (summary(emmeans(P_foliar_lm, ~fire))[1,2] - summary(emmeans(P_foliar_lm, ~fire))[2,2])/ summary(emmeans(P_foliar_lm, ~fire))[2,2]
+# (summary(emmeans(K_foliar_lm, ~fire))[1,2] - summary(emmeans(K_foliar_lm, ~fire))[2,2])/ summary(emmeans(K_foliar_lm, ~fire))[2,2]
+# (summary(emmeans(Ca_foliar_lm, ~elevation_fac))[1,2] - summary(emmeans(Ca_foliar_lm, ~elevation_fac))[2,2])/ summary(emmeans(Ca_foliar_lm, ~elevation_fac))[2,2]
+# (summary(emmeans(Zn_foliar_lm, ~elevation_fac))[1,2] - summary(emmeans(Zn_foliar_lm, ~elevation_fac))[2,2])/ summary(emmeans(Zn_foliar_lm, ~elevation_fac))[2,2]
+# 
+# (summary(emmeans(d13C_lm, ~elevation_fac))[1,2] - summary(emmeans(d13C_lm, ~elevation_fac))[2,2])/ summary(emmeans(d13C_lm, ~elevation_fac))[2,2]
+# 
+# (summary(emmeans(C_soil_lm, ~fire))[1,2] - summary(emmeans(C_soil_lm, ~fire))[2,2])/ summary(emmeans(C_soil_lm, ~fire))[2,2]
+# (summary(emmeans(C_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(C_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(C_soil_lm, ~elevation_fac))[2,2]
+# (summary(emmeans(CN_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(CN_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(CN_soil_lm, ~elevation_fac))[2,2]
 
 ### soil inorganics
-write.csv(cbind(as.matrix(as.data.frame(Anova(Al_soil_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(Ca_soil_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(K_soil_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(Mg_soil_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(P_soil_lm))[, c(2:4)]),
-                as.matrix(as.data.frame(Anova(Zn_soil_lm))[, c(2:4)])),
-          'tables/soil_inorganics.csv')
+# write.csv(cbind(as.matrix(as.data.frame(Anova(Al_soil_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(Ca_soil_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(K_soil_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(Mg_soil_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(P_soil_lm))[, c(2:4)]),
+#                 as.matrix(as.data.frame(Anova(Zn_soil_lm))[, c(2:4)])),
+#           'tables/soil_inorganics.csv')
 
-(summary(emmeans(K_soil_lm, ~fire))[1,2] - summary(emmeans(K_soil_lm, ~fire))[2,2])/ summary(emmeans(K_soil_lm, ~fire))[2,2]
-(summary(emmeans(Ca_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(Ca_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(Ca_soil_lm, ~elevation_fac))[2,2]
+# (summary(emmeans(K_soil_lm, ~fire))[1,2] - summary(emmeans(K_soil_lm, ~fire))[2,2])/ summary(emmeans(K_soil_lm, ~fire))[2,2]
+# (summary(emmeans(Ca_soil_lm, ~elevation_fac))[1,2] - summary(emmeans(Ca_soil_lm, ~elevation_fac))[2,2])/ summary(emmeans(Ca_soil_lm, ~elevation_fac))[2,2]
 
 #### save graphs ####
 
