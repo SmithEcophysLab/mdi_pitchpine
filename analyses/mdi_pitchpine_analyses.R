@@ -75,10 +75,10 @@ plot_aspect_SCT <- plot.circular(aspect_SCT, main = 'South Cadillac (a)',
                                 cex = 8, col = "red", pch = 17)
 plot_aspect_WON <- plot.circular(aspect_WON, main = 'Wonderland (b)', 
                                  ylab = "No Fire", xlab = "Low Elevation", 
-                                 cex = 8, col = "blue", pch = 16)
+                                 cex = 8, col = "blue", pch = 15)
 plot_aspect_STS <- plot.circular(aspect_STS, main = 'St. Sauveur (c)', 
                                    xlab = "High Elevation", 
-                                   cex = 8, col = "blue", pch = 17)
+                                   cex = 8, col = "blue", pch = 18)
 dev.off()
 
 ## slope
@@ -86,29 +86,29 @@ slope_lm <- lm(Slope ~ Elevation * Fire, data = data)
 # plot(resid(slope_lm) ~ fitted(slope_lm))
 Anova(slope_lm)
 
-slope_f_slope <- summary(emtrends(slope_lm, ~ Fire, var = "Elevation"))[1, 2] 
-slope_f_intercept <- summary(emmeans(slope_lm, ~ Fire, at = list(Elevation = 0)))[1, 2] 
-slope_f_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
-slope_f_trend <- slope_f_intercept + slope_f_seq * slope_f_slope
-slope_f_trend <- as.data.frame(cbind(slope_f_seq, slope_f_trend))
-
-slope_nf_slope <- summary(emtrends(slope_lm, ~ Fire, var = "Elevation"))[2, 2] 
-slope_nf_intercept <- summary(emmeans(slope_lm, ~ Fire, at = list(Elevation = 0)))[2, 2] 
-slope_nf_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
-slope_nf_trend <- slope_nf_intercept + slope_nf_seq * slope_nf_slope
-slope_nf_trend <- as.data.frame(cbind(slope_nf_seq, slope_nf_trend))
-
-(plot_slope <- ggplot(data = data, aes(x = Elevation, y = Slope)) +
-        geom_jitter(aes(color = Fire), size = 2) +
-        scale_color_manual(values = c('red', 'blue')) +
-        geom_line(data = slope_f_trend, aes(x = slope_f_seq, y = slope_f_trend), 
-                  col = 'red', lwd = 2, alpha = 0.8) +
-        geom_line(data = slope_nf_trend, aes(x = slope_nf_seq, y = slope_nf_trend), 
-                  col = 'blue', lwd = 2, alpha = 0.8) +
-        theme_few(base_size = 16) + 
-        scale_x_continuous(name = "Elevation (m)", limits = c(0, 1500)) +
-        scale_y_continuous(name = "Slope (◦)") +
-        guides(color = guide_legend("Fire History")))
+# slope_f_slope <- summary(emtrends(slope_lm, ~ Fire, var = "Elevation"))[1, 2] 
+# slope_f_intercept <- summary(emmeans(slope_lm, ~ Fire, at = list(Elevation = 0)))[1, 2] 
+# slope_f_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+# slope_f_trend <- slope_f_intercept + slope_f_seq * slope_f_slope
+# slope_f_trend <- as.data.frame(cbind(slope_f_seq, slope_f_trend))
+# 
+# slope_nf_slope <- summary(emtrends(slope_lm, ~ Fire, var = "Elevation"))[2, 2] 
+# slope_nf_intercept <- summary(emmeans(slope_lm, ~ Fire, at = list(Elevation = 0)))[2, 2] 
+# slope_nf_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+# slope_nf_trend <- slope_nf_intercept + slope_nf_seq * slope_nf_slope
+# slope_nf_trend <- as.data.frame(cbind(slope_nf_seq, slope_nf_trend))
+# 
+# (plot_slope <- ggplot(data = data, aes(x = Elevation, y = Slope)) +
+#         geom_jitter(aes(color = Fire), size = 2) +
+#         scale_color_manual(values = c('red', 'blue')) +
+#         geom_line(data = slope_f_trend, aes(x = slope_f_seq, y = slope_f_trend), 
+#                   col = 'red', lwd = 2, alpha = 0.8) +
+#         geom_line(data = slope_nf_trend, aes(x = slope_nf_seq, y = slope_nf_trend), 
+#                   col = 'blue', lwd = 2, alpha = 0.8) +
+#         theme_few(base_size = 16) + 
+#         scale_x_continuous(name = "Elevation (m)", limits = c(0, 1500)) +
+#         scale_y_continuous(name = "Slope (◦)") +
+#         guides(color = guide_legend("Fire History")))
 
 ## allometry
 ### height
@@ -130,8 +130,10 @@ height_nf_trend <- height_nf_intercept + height_nf_seq * height_nf_slope
 height_nf_trend <- as.data.frame(cbind(height_nf_seq, height_nf_trend))
 
 (plot_height <- ggplot(data = data, aes(x = Elevation, y = log(Height))) +
-    geom_jitter(aes(color = Fire), size = 2) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
     geom_line(data = height_f_trend, aes(x = height_f_seq, y = height_f_trend), 
               col = 'red', lwd = 2, alpha = 0.8) +
     geom_line(data = height_nf_trend, aes(x = height_nf_seq, y = height_nf_trend), 
@@ -153,8 +155,10 @@ canopy_trend <- canopy_intercept + canopy_seq * canopy_slope
 canopy_trend <- as.data.frame(cbind(canopy_seq, canopy_trend))
 
 (plot_canopy <- ggplot(data = data, aes(x = Elevation, y = log(Canopy))) +
-    geom_jitter(aes(color = Fire), size = 2) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
     geom_line(data = canopy_trend, aes(x = canopy_seq, y = canopy_trend), 
               col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
@@ -174,8 +178,10 @@ diam_trend <- diam_intercept + diam_seq * diam_slope
 diam_trend <- as.data.frame(cbind(diam_seq, diam_trend))
 
 (plot_diam <- ggplot(data = data, aes(x = Elevation, y = log(Diam))) +
-    geom_jitter(aes(color = Fire), size = 2) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
     geom_line(data = diam_trend, aes(x = diam_seq, y = diam_trend), 
               col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
@@ -195,8 +201,10 @@ density_trend <- density_intercept + density_seq * density_slope
 density_trend <- as.data.frame(cbind(density_seq, density_trend))
 
 (plot_density <- ggplot(data = data, aes(x = Elevation, y = mean_distance)) +
-    geom_jitter(aes(color = Fire), size = 2) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
     geom_line(data = density_trend, aes(x = density_seq, y = density_trend), 
               col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) +
@@ -222,8 +230,10 @@ d13C_trend <- d13C_intercept + d13C_seq * d13C_slope
 d13C_trend <- as.data.frame(cbind(d13C_seq, d13C_trend))
 
 (plot_d13C <- ggplot(data = data, aes(x = Elevation, y = d13C)) +
-    geom_jitter(aes(color = Fire), size = 2) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
     geom_line(data = d13C_trend, aes(x = d13C_seq, y = d13C_trend), 
               col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
@@ -237,8 +247,10 @@ d15N_lm <- lm(d15N ~ Elevation * Fire , data = data)
 Anova(d15N_lm)
 
 (plot_d15N <- ggplot(data = data, aes(x = Elevation, y = d15N)) +
-        geom_jitter(aes(color = Fire), size = 2) +
-        scale_color_manual(values = c('red', 'blue')) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
+    scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
         theme_few(base_size = 16) + 
         scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
         ylab(expression(delta^{"15"}*"N (‰)")) +
@@ -251,8 +263,10 @@ C_foliar_lm <- lm(C_foliar ~ Elevation * Fire , data = data)
 Anova(C_foliar_lm)
 
 (plot_C_foliar <- ggplot(data = data, aes(x = Elevation, y = C_foliar)) +
-        geom_jitter(height = 0, aes(color = Fire), size = 2) +
-        scale_color_manual(values = c('red', 'blue')) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
+    scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
         theme_few(base_size = 16) + 
         scale_x_continuous(name = "Elevation (m)", limits = c(0, 1500)) +
         ylab(expression("Foliar Carbon (g g"^{-1}*")")) +
@@ -264,8 +278,10 @@ N_foliar_lm <- lm(N_foliar ~ Elevation * Fire , data = data)
 Anova(N_foliar_lm)
 
 (plot_N_foliar <- ggplot(data = data, aes(x = Elevation, y = N_foliar)) +
-        geom_jitter(aes(color = Fire), size = 2) +
-        scale_color_manual(values = c('red', 'blue')) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
+    scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
         theme_few(base_size = 16) + 
         scale_x_continuous(name = "Elevation (m)", limits = c(0, 1500)) +
         ylab(expression("Foliar Nitrogen (g g"^{-1}*")")) +
@@ -277,8 +293,10 @@ CN_foliar_lm <- lm(CN_foliar ~ Elevation * Fire , data = data)
 Anova(CN_foliar_lm)
 
 (plot_CN_foliar <- ggplot(data = data, aes(x = Elevation, y = N_foliar)) +
-        geom_jitter(aes(color = Fire), size = 2) +
-        scale_color_manual(values = c('red', 'blue')) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
+    scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
         theme_few(base_size = 16) + 
         scale_x_continuous(name = "Elevation (m)", limits = c(0, 1500)) +
         ylab("Foliar Carbon/Nitrogen") +
@@ -297,8 +315,10 @@ Ca_foliar_trend <- Ca_foliar_intercept + Ca_foliar_seq * Ca_foliar_slope
 Ca_foliar_trend <- as.data.frame(cbind(Ca_foliar_seq, Ca_foliar_trend))
 
 (plot_Ca_foliar <- ggplot(data = data, aes(x = Elevation, y = Ca_foliar)) +
-    geom_jitter(aes(color = Fire), size = 2) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
     geom_line(data = Ca_foliar_trend, aes(x = Ca_foliar_seq, y = Ca_foliar_trend), 
               col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
@@ -312,8 +332,10 @@ P_foliar_lm <- lm(log(P_foliar) ~ Elevation * Fire , data = data)
 Anova(P_foliar_lm)
 
 (plot_P_foliar <- ggplot(data = data, aes(x = Elevation, y = P_foliar)) +
-        geom_jitter(height = 0, aes(color = Fire), size = 2) +
-        scale_color_manual(values = c('red', 'blue')) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
+    scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
         theme_few(base_size = 16) + 
         scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
         ylab(expression("Foliar Phosphorus (g g"^{-1}*")")) +
@@ -337,8 +359,10 @@ Anova(K_foliar_lm)
 # K_foliar_nf_trend <- as.data.frame(cbind(K_foliar_nf_seq, K_foliar_nf_trend))
 
 (plot_K_foliar <- ggplot(data = data, aes(x = Elevation, y = log(K_foliar))) +
-    geom_jitter(aes(color = Fire), size = 2) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
     # geom_line(data = K_foliar_f_trend, aes(x = K_foliar_f_seq, y = K_foliar_f_trend), 
     #           col = 'red', lwd = 2, alpha = 0.8) +
     # geom_line(data = K_foliar_nf_trend, aes(x = K_foliar_nf_seq, y = K_foliar_nf_trend), 
@@ -354,8 +378,10 @@ Mg_foliar_lm <- lm(Mg_foliar ~ Elevation * Fire , data = data)
 Anova(Mg_foliar_lm)
 
 (plot_Mg_foliar <- ggplot(data = data, aes(x = Elevation, y = Mg_foliar)) +
-        geom_jitter(aes(color = Fire), size = 2) +
-        scale_color_manual(values = c('red', 'blue')) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
+    scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
         theme_few(base_size = 16) + 
         scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
         ylab(expression("Foliar Magnesium (g g"^{-1}*")")) +
@@ -367,8 +393,10 @@ Al_foliar_lm <- lm(Al_foliar ~ Elevation * Fire , data = data)
 Anova(Al_foliar_lm)
 
 (plot_Al_foliar <- ggplot(data = data, aes(x = Elevation, y = Al_foliar)) +
-        geom_jitter(aes(color = Fire), size = 2) +
-        scale_color_manual(values = c('red', 'blue')) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
+    scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
         theme_few(base_size = 16) + 
         scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
         ylab(expression("Foliar Aluminum (g g"^{-1}*")")) +
@@ -386,8 +414,10 @@ Zn_foliar_trend <- Zn_foliar_intercept + Zn_foliar_seq * Zn_foliar_slope
 Zn_foliar_trend <- as.data.frame(cbind(Zn_foliar_seq, Zn_foliar_trend))
 
 (plot_Zn_foliar <- ggplot(data = data, aes(x = Elevation, y = log(Zn_foliar))) +
-        geom_jitter(aes(color = Fire), size = 2) +
-        scale_color_manual(values = c('red', 'blue')) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
+    scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
         geom_line(data = Zn_foliar_trend, aes(x = Zn_foliar_seq, y = Zn_foliar_trend), 
                   col = 'black', lwd = 2, alpha = 0.8) +
         theme_few(base_size = 16) + 
@@ -419,8 +449,10 @@ C_soil_trend <- C_soil_intercept + C_soil_seq * C_soil_slope
 C_soil_trend <- as.data.frame(cbind(C_soil_seq, C_soil_trend))
 
 (plot_C_soil <- ggplot(data = data, aes(x = Elevation, y = C_soil)) +
-    geom_jitter(height = 0, aes(color = Fire), size = 2) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
     geom_line(data = C_soil_trend, aes(x = C_soil_seq, y = C_soil_trend), 
               col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
@@ -434,8 +466,10 @@ N_soil_lm <- lm(N_soil ~ Elevation * Fire , data = data)
 Anova(N_soil_lm)
 
 (plot_N_soil <- ggplot(data = data, aes(x = Elevation, y = N_soil)) +
-        geom_jitter(height = 0, aes(color = Fire), size = 2) +
-        scale_color_manual(values = c('red', 'blue')) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
+    scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
         theme_few(base_size = 16) + 
         scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
         ylab(expression("Soil Nitrogen (g g"^{-1}*")")) +
@@ -453,8 +487,10 @@ Anova(CN_soil_lm)
 # CN_soil_trend <- as.data.frame(cbind(CN_soil_seq, CN_soil_trend))
 
 (plot_CN_soil <- ggplot(data = data, aes(x = Elevation, y = log(CN_soil))) +
-    geom_jitter(height = 0, aes(color = Fire), size = 2) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
     # geom_line(data = CN_soil_trend, aes(x = CN_soil_seq, y = CN_soil_trend), 
     #           col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
@@ -475,8 +511,10 @@ Ca_soil_trend <- Ca_soil_intercept + Ca_soil_seq * Ca_soil_slope
 Ca_soil_trend <- as.data.frame(cbind(Ca_soil_seq, Ca_soil_trend))
 
 (plot_Ca_soil <- ggplot(data = data, aes(x = Elevation, y = Ca_soil)) +
-    geom_jitter(aes(color = Fire), size = 2) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
     geom_line(data = Ca_soil_trend, aes(x = Ca_soil_seq, y = Ca_soil_trend), 
               col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
@@ -496,8 +534,10 @@ Anova(P_soil_lm)
 # P_soil_trend <- as.data.frame(cbind(P_soil_seq, P_soil_trend))
 
 (plot_P_soil <- ggplot(data = data, aes(x = Elevation, y = log(P_soil))) +
-    geom_jitter(aes(color = Fire), size = 2) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
     # geom_line(data = P_soil_trend, aes(x = P_soil_seq, y = P_soil_trend), 
     #           col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
@@ -517,8 +557,10 @@ Anova(K_soil_lm)
 # K_soil_trend <- as.data.frame(cbind(K_soil_seq, K_soil_trend))
 
 (plot_K_soil <- ggplot(data = data, aes(x = Elevation, y = K_soil)) +
-    geom_jitter(aes(color = Fire), size = 2) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
     # geom_line(data = K_soil_trend, aes(x = K_soil_seq, y = K_soil_trend), 
     #           col = 'black', lwd = 2, alpha = 0.8) +
     theme_few(base_size = 16) + 
@@ -538,8 +580,10 @@ Anova(Mg_soil_lm)
 # Mg_soil_trend <- as.data.frame(cbind(Mg_soil_seq, Mg_soil_trend))
 
 (plot_Mg_soil <- ggplot(data = data, aes(x = Elevation, y = Mg_soil)) +
-        geom_jitter(aes(color = Fire), size = 2) +
-        scale_color_manual(values = c('red', 'blue')) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
+    scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
         # geom_line(data = Mg_soil_trend, aes(x = Mg_soil_seq, y = Mg_soil_trend), 
         #           col = 'black', lwd = 2, alpha = 0.8) +
         theme_few(base_size = 16) + 
@@ -565,8 +609,10 @@ Al_soil_nf_trend <- Al_soil_nf_intercept + Al_soil_nf_seq * Al_soil_nf_slope
 Al_soil_nf_trend <- as.data.frame(cbind(Al_soil_nf_seq, Al_soil_nf_trend))
 
 (plot_Al_soil <- ggplot(data = data, aes(x = Elevation, y = log(Al_soil))) +
-    geom_jitter(aes(color = Fire), size = 2) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
     geom_line(data = Al_soil_f_trend, aes(x = Al_soil_f_seq, y = Al_soil_f_trend), 
               col = 'red', lwd = 2, alpha = 0.8) +
     geom_line(data = Al_soil_nf_trend, aes(x = Al_soil_nf_seq, y = Al_soil_nf_trend), 
@@ -582,8 +628,10 @@ Zn_soil_lm <- lm(log(Zn_soil) ~ Elevation * Fire , data = data)
 Anova(Zn_soil_lm)
 
 (plot_Zn_soil <- ggplot(data = data, aes(x = Elevation, y = log(Zn_soil))) +
-    geom_jitter(aes(color = Fire), size = 2) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
     scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
     theme_few(base_size = 16) + 
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 1000)) +
     ylab(expression("Soil Zinc (mg g"^{-1}*")")) +
@@ -607,8 +655,10 @@ retention_nf_trend <- retention_nf_intercept + retention_nf_seq * retention_nf_s
 retention_nf_trend <- as.data.frame(cbind(retention_nf_seq, retention_nf_trend))
 
 (plot_retention <- ggplot(data = data, aes(x = Elevation, y = asin(sqrt(0.01 * Retention)))) +
-        geom_jitter(aes(color = Fire), size = 2) +
-        scale_color_manual(values = c('red', 'blue')) +
+    geom_jitter(aes(color = Fire, shape = Site), size = 2) +
+    scale_color_manual(values = c('red', 'blue')) +
+    scale_shape_manual(values = c(16, 17, 18, 15), 
+                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
         geom_line(data = retention_f_trend, aes(x = retention_f_seq, y = retention_f_trend), 
                   col = 'red', lwd = 2, alpha = 0.8) +
         geom_line(data = retention_nf_trend, aes(x = retention_nf_seq, y = retention_nf_trend), 
@@ -700,8 +750,8 @@ topography <- data %>% group_by(Site) %>% summarise_at(vars(Latitude, Longitude,
 #### save graphs ####
 
 ## slope
-ggsave("plots/plot_slope.jpeg", plot = plot_slope,
-       width = 28, height = 18, units = "cm", dpi = 600) # 1 panel
+# ggsave("plots/plot_slope.jpeg", plot = plot_slope,
+#        width = 28, height = 18, units = "cm", dpi = 600) # 1 panel
 
 ## allometry
 ggsave("plots/plots_allometry.jpeg", plot = plots_allometry,
