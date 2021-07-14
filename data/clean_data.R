@@ -1,17 +1,18 @@
 # script to clean the mdi pitch pine data (and combine as possible)
 
 library(dplyr)
+library(tidyr)
 
 ## read in data
 foliar = read.csv('raw/pitchpine_mdi_foliar_final.csv')[, 1:8]
 colnames(foliar) = c('ID', 'Name', 'Ca_foliar', 'P_foliar', 
                      'K_foliar', 'Mg_foliar', 'Al_foliar', 'Zn_foliar')
-foliar$Ca_foliar <- foliar$Ca_foliar/1000
-foliar$P_foliar <- foliar$P_foliar/1000
-foliar$K_foliar <- foliar$K_foliar/1000
-foliar$Mg_foliar <- foliar$Mg_foliar/1000
-foliar$Al_foliar <- foliar$Al_foliar/1000
-foliar$Zn_foliar <- foliar$Zn_foliar/1000
+# foliar$Ca_foliar <- foliar$Ca_foliar/1000
+# foliar$P_foliar <- foliar$P_foliar/1000
+# foliar$K_foliar <- foliar$K_foliar/1000
+# foliar$Mg_foliar <- foliar$Mg_foliar/1000
+# foliar$Al_foliar <- foliar$Al_foliar/1000
+# foliar$Zn_foliar <- foliar$Zn_foliar/1000
 biophysical = read.csv('raw/pitchpine_mdi_biophysical.csv', skip = 1)[, c(1:2, 4:6)]
 colnames(biophysical) = c('ID', 'Name', 'Height', 'Canopy', 'Diam')
 biophysical$Height <- biophysical$Height/100
@@ -25,12 +26,12 @@ retention$Retention = as.numeric(gsub("[\\%,]", "", retention$Retention))
 soil = read.csv('raw/pitchpine_mdi_soil.csv')[, 1:12]
 colnames(soil) = c('ID', 'Name', 'Ca_soil', 'P_soil', 'K_soil', 'Mg_soil', 'Al_soil', 'Zn_soil',
                    'pH', 'CEC', 'C_soil', 'N_soil')
-soil$Ca_soil <- soil$Ca_soil/1000
-soil$P_soil <- soil$P_soil/1000
-soil$K_soil <- soil$K_soil/1000
-soil$Mg_soil <- soil$Mg_soil/1000
-soil$Al_soil <- soil$Al_soil/1000
-soil$Zn_soil <- soil$Zn_soil/1000
+# soil$Ca_soil <- soil$Ca_soil/1000
+# soil$P_soil <- soil$P_soil/1000
+# soil$K_soil <- soil$K_soil/1000
+# soil$Mg_soil <- soil$Mg_soil/1000
+# soil$Al_soil <- soil$Al_soil/1000
+# soil$Zn_soil <- soil$Zn_soil/1000
 geo = read.csv('raw/MDITreeGeoRasterData_2021.csv')
 colnames(geo) = c('ID1', 'Name', 'Longitude', 'Latitude', 'Label', 'Elevation', 'Slope', 'Aspect')
 geo$ID = NA
