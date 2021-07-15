@@ -45,6 +45,13 @@ data$Site[data$Name == "WOND"] <- "WON"
 ### convert elevation to meters
 data$Elevation_m = data$Elevation/3.2808
 
+### make fire and no fire subset for plotting trendlines
+### note: omitting the very high elevation as these plots don't matter
+data_fire = subset(data, Fire == 'fire' & Elevation_m < 300)
+data_nofire = subset(data, Fire == 'no fire' & Elevation_m < 300)
+
+data_plot_trend = subset(data, Elevation_m < 300)
+
 #### fit models and explore results ####
 
 ### aspect
@@ -122,13 +129,13 @@ summary(height_lm) # N = 40
 
 height_f_slope <- summary(emtrends(height_lm, ~ Fire, var = "Elevation_m"))[1, 2] 
 height_f_intercept <- summary(emmeans(height_lm, ~ Fire, at = list(Elevation_m = 0)))[1, 2] 
-height_f_seq <- seq(min(data$Elevation_m, na.rm = T), max(data$Elevation_m, na.rm = T), 0.01)
+height_f_seq <- seq(min(data_fire$Elevation_m, na.rm = T), max(data_fire$Elevation_m, na.rm = T), 0.01)
 height_f_trend <- exp(height_f_intercept + height_f_seq * height_f_slope)
 height_f_trend <- as.data.frame(cbind(height_f_seq, height_f_trend))
 
 height_nf_slope <- summary(emtrends(height_lm, ~ Fire, var = "Elevation_m"))[2, 2] 
 height_nf_intercept <- summary(emmeans(height_lm, ~ Fire, at = list(Elevation_m = 0)))[2, 2] 
-height_nf_seq <- seq(min(data$Elevation_m, na.rm = T), max(data$Elevation_m, na.rm = T), 0.01)
+height_nf_seq <- seq(min(data_nofire$Elevation_m, na.rm = T), max(data_nofire$Elevation_m, na.rm = T), 0.01)
 height_nf_trend <- exp(height_nf_intercept + height_nf_seq * height_nf_slope)
 height_nf_trend <- as.data.frame(cbind(height_nf_seq, height_nf_trend))
 
@@ -154,7 +161,7 @@ Anova(canopy_lm)
 
 canopy_slope <- summary(emtrends(canopy_lm, ~ Elevation_m, var = "Elevation_m"))[1, 2] 
 canopy_intercept <- summary(emmeans(canopy_lm, ~ Elevation_m, at = list(Elevation_m = 0)))[1, 2] 
-canopy_seq <- seq(min(data$Elevation_m, na.rm = T), max(data$Elevation_m, na.rm = T), 0.01)
+canopy_seq <- seq(min(data_plot_trend$Elevation_m, na.rm = T), max(data_plot_trend$Elevation_m, na.rm = T), 0.01)
 canopy_trend <- canopy_intercept + canopy_seq * canopy_slope
 canopy_trend <- as.data.frame(cbind(canopy_seq, canopy_trend))
 
@@ -178,7 +185,7 @@ Anova(diam_lm)
 
 diam_slope <- summary(emtrends(diam_lm, ~ Elevation_m, var = "Elevation_m"))[1, 2] 
 diam_intercept <- summary(emmeans(diam_lm, ~ Elevation_m, at = list(Elevation_m = 0)))[1, 2] 
-diam_seq <- seq(min(data$Elevation_m, na.rm = T), max(data$Elevation_m, na.rm = T), 0.01)
+diam_seq <- seq(min(data_plot_trend$Elevation_m, na.rm = T), max(data_plot_trend$Elevation_m, na.rm = T), 0.01)
 diam_trend <- exp(diam_intercept + diam_seq * diam_slope)
 diam_trend <- as.data.frame(cbind(diam_seq, diam_trend))
 
@@ -232,7 +239,7 @@ Anova(d13C_lm)
 
 d13C_slope <- summary(emtrends(d13C_lm, ~ Elevation_m, var = "Elevation_m"))[1, 2] 
 d13C_intercept <- summary(emmeans(d13C_lm, ~ Elevation_m, at = list(Elevation_m = 0)))[1, 2] 
-d13C_seq <- seq(min(data$Elevation_m, na.rm = T), max(data$Elevation_m, na.rm = T), 0.01)
+d13C_seq <- seq(min(data_plot_trend$Elevation_m, na.rm = T), max(data_plot_trend$Elevation_m, na.rm = T), 0.01)
 d13C_trend <- d13C_intercept + d13C_seq * d13C_slope
 d13C_trend <- as.data.frame(cbind(d13C_seq, d13C_trend))
 
@@ -322,7 +329,7 @@ Anova(Ca_foliar_lm)
 
 Ca_foliar_slope <- summary(emtrends(Ca_foliar_lm, ~ Elevation_m, var = "Elevation_m"))[1, 2] 
 Ca_foliar_intercept <- summary(emmeans(Ca_foliar_lm, ~ Elevation_m, at = list(Elevation_m = 0)))[1, 2] 
-Ca_foliar_seq <- seq(min(data$Elevation_m, na.rm = T), max(data$Elevation_m, na.rm = T), 0.01)
+Ca_foliar_seq <- seq(min(data_plot_trend$Elevation_m, na.rm = T), max(data_plot_trend$Elevation_m, na.rm = T), 0.01)
 Ca_foliar_trend <- Ca_foliar_intercept + Ca_foliar_seq * Ca_foliar_slope
 Ca_foliar_trend <- as.data.frame(cbind(Ca_foliar_seq, Ca_foliar_trend))
 
@@ -338,6 +345,7 @@ Ca_foliar_trend <- as.data.frame(cbind(Ca_foliar_seq, Ca_foliar_trend))
     scale_x_continuous(name = "Elevation (m)", limits = c(0, 300)) +
     ylab(expression("Foliar Ca" ^ "2+ " * "(mg kg"^{-1}*")")) +
     guides(color = guide_legend("Fire History")))
+
 ### P_foliar
 P_foliar_lm <- lm(log(P_foliar) ~ Elevation_m * Fire , data = data)
 #plot(resid(P_foliar_lm) ~ fitted(P_foliar_lm))
@@ -427,7 +435,7 @@ Anova(Zn_foliar_lm)
 
 Zn_foliar_slope <- summary(emtrends(Zn_foliar_lm, ~ Elevation_m, var = "Elevation_m"))[1, 2] 
 Zn_foliar_intercept <- summary(emmeans(Zn_foliar_lm, ~ Elevation_m, at = list(Elevation_m = 0)))[1, 2] 
-Zn_foliar_seq <- seq(min(data$Elevation_m, na.rm = T), max(data$Elevation_m, na.rm = T), 0.01)
+Zn_foliar_seq <- seq(min(data_plot_trend$Elevation_m, na.rm = T), max(data_plot_trend$Elevation_m, na.rm = T), 0.01)
 Zn_foliar_trend <- exp(Zn_foliar_intercept + Zn_foliar_seq * Zn_foliar_slope)
 Zn_foliar_trend <- as.data.frame(cbind(Zn_foliar_seq, Zn_foliar_trend))
 
@@ -463,7 +471,7 @@ Anova(C_soil_lm)
 
 C_soil_slope <- summary(emtrends(C_soil_lm, ~ Elevation_m, var = "Elevation_m"))[1, 2] 
 C_soil_intercept <- summary(emmeans(C_soil_lm, ~ Elevation_m, at = list(Elevation_m = 0)))[1, 2] 
-C_soil_seq <- seq(min(data$Elevation_m, na.rm = T), max(data$Elevation_m, na.rm = T), 0.01)
+C_soil_seq <- seq(min(data_plot_trend$Elevation_m, na.rm = T), max(data_plot_trend$Elevation_m, na.rm = T), 0.01)
 C_soil_trend <- C_soil_intercept + C_soil_seq * C_soil_slope
 C_soil_trend <- as.data.frame(cbind(C_soil_seq, C_soil_trend))
 
@@ -528,7 +536,7 @@ Anova(Ca_soil_lm)
 
 Ca_soil_slope <- summary(emtrends(Ca_soil_lm, ~ Elevation_m, var = "Elevation_m"))[1, 2] 
 Ca_soil_intercept <- summary(emmeans(Ca_soil_lm, ~ Elevation_m, at = list(Elevation_m = 0)))[1, 2] 
-Ca_soil_seq <- seq(min(data$Elevation_m, na.rm = T), max(data$Elevation_m, na.rm = T), 0.01)
+Ca_soil_seq <- seq(min(data_plot_trend$Elevation_m, na.rm = T), max(data_plot_trend$Elevation_m, na.rm = T), 0.01)
 Ca_soil_trend <- Ca_soil_intercept + Ca_soil_seq * Ca_soil_slope
 Ca_soil_trend <- as.data.frame(cbind(Ca_soil_seq, Ca_soil_trend))
 
@@ -626,13 +634,13 @@ Anova(Al_soil_lm)
 
 Al_soil_f_slope <- summary(emtrends(Al_soil_lm, ~ Fire, var = "Elevation_m"))[1, 2] 
 Al_soil_f_intercept <- summary(emmeans(Al_soil_lm, ~ Fire, at = list(Elevation_m = 0)))[1, 2] 
-Al_soil_f_seq <- seq(min(data$Elevation_m, na.rm = T), max(data$Elevation_m, na.rm = T), 0.01)
+Al_soil_f_seq <- seq(min(data_fire$Elevation_m, na.rm = T), max(data_fire$Elevation_m, na.rm = T), 0.01)
 Al_soil_f_trend <- exp(Al_soil_f_intercept + Al_soil_f_seq * Al_soil_f_slope)
 Al_soil_f_trend <- as.data.frame(cbind(Al_soil_f_seq, Al_soil_f_trend))
 
 Al_soil_nf_slope <- summary(emtrends(Al_soil_lm, ~ Fire, var = "Elevation_m"))[2, 2] 
 Al_soil_nf_intercept <- summary(emmeans(Al_soil_lm, ~ Fire, at = list(Elevation_m = 0)))[2, 2] 
-Al_soil_nf_seq <- seq(min(data$Elevation_m, na.rm = T), max(data$Elevation_m, na.rm = T), 0.01)
+Al_soil_nf_seq <- seq(min(data_nofire$Elevation_m, na.rm = T), max(data_nofire$Elevation_m, na.rm = T), 0.01)
 Al_soil_nf_trend <- exp(Al_soil_nf_intercept + Al_soil_nf_seq * Al_soil_nf_slope)
 Al_soil_nf_trend <- as.data.frame(cbind(Al_soil_nf_seq, Al_soil_nf_trend))
 
@@ -674,13 +682,13 @@ Anova(retention_lm)
 
 retention_f_slope <- summary(emtrends(retention_lm, ~ Fire, var = "Elevation_m"))[1, 2] 
 retention_f_intercept <- summary(emmeans(retention_lm, ~ Fire, at = list(Elevation_m = 0)))[1, 2] 
-retention_f_seq <- seq(min(data$Elevation_m, na.rm = T), max(data$Elevation_m, na.rm = T), 0.01)
+retention_f_seq <- seq(min(data_fire$Elevation_m, na.rm = T), max(data_fire$Elevation_m, na.rm = T), 0.01)
 retention_f_trend <- sin(retention_f_intercept + retention_f_seq * retention_f_slope)^2 * 100
 retention_f_trend <- as.data.frame(cbind(retention_f_seq, retention_f_trend))
 
 retention_nf_slope <- summary(emtrends(retention_lm, ~ Fire, var = "Elevation_m"))[2, 2] 
 retention_nf_intercept <- summary(emmeans(retention_lm, ~ Fire, at = list(Elevation_m = 0)))[2, 2] 
-retention_nf_seq <- seq(min(data$Elevation_m, na.rm = T), max(data$Elevation_m, na.rm = T), 0.01)
+retention_nf_seq <- seq(min(data_nofire$Elevation_m, na.rm = T), max(data_nofire$Elevation_m, na.rm = T), 0.01)
 retention_nf_trend <- sin(retention_nf_intercept + retention_nf_seq * retention_nf_slope)^2 * 100
 retention_nf_trend <- as.data.frame(cbind(retention_nf_seq, retention_nf_trend))
 
