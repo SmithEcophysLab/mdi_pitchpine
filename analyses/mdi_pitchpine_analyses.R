@@ -704,7 +704,7 @@ retention_nf_trend <- as.data.frame(cbind(retention_nf_seq, retention_nf_trend))
                   col = 'blue', lwd = 2, alpha = 0.8) +
         theme_few(base_size = 16) + 
         scale_x_continuous(name = "Elevation (m)", limits = c(0, 300)) +
-        ylab("Soil Water Retention (%)") +
+        ylab("Soil Water Retention (SWR; %)") +
         guides(color = guide_legend("Fire History")))
 
 (plots_soil_organics <- plot_C_soil + plot_N_soil + plot_CN_soil + plot_retention +
@@ -722,7 +722,7 @@ retention_nf_trend <- as.data.frame(cbind(retention_nf_seq, retention_nf_trend))
 
 ### topography
 #### create table with mean latitude, longitude, elevation, slope, and aspect for each site
-topography <- data %>% group_by(Site) %>% summarise_at(vars(Latitude, Longitude, Elevation, Slope, Aspect), mean, na.rm = TRUE)
+topography <- data %>% group_by(Site) %>% summarise_at(vars(Latitude, Longitude, Elevation_m, Slope, Aspect), mean, na.rm = TRUE)
 # write.csv(topography, "tables/topography.csv")
 
 ### allometry
