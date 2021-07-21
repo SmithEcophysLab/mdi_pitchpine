@@ -11,6 +11,7 @@ library(ggthemes)
 library(agricolae)
 library(patchwork)
 library(car)
+library(equatiomatic)
 
 #### read in cleaned data ####
 
