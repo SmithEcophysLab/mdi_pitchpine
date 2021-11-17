@@ -19,10 +19,10 @@ data <- read.csv('../data/mdi_all_clean.csv')
 data$CN_foliar <- data$C_foliar/data$N_foliar
 data$CN_soil <- data$C_soil/data$N_soil
 
-data_density <- read.csv('../data/mdi_stand_density.csv')
-
-# add density data to all data
-data <- left_join(data, data_density, by = "ID")
+# data_density <- read.csv('../data/mdi_stand_density.csv')
+# 
+# # add density data to all data
+# data <- left_join(data, data_density, by = "ID")
 
 ## assign fire history status to each site
 data$Fire[data$Name == 'CAD'] <- 'fire' 
@@ -208,30 +208,30 @@ diam_nf_trend <- as.data.frame(cbind(diam_nf_seq, diam_nf_trend))
     guides(color = guide_legend("Fire History")))
 
 ### density
-density_lm <- lm(mean_distance ~ Elevation * Fire , data = data)
-#plot(resid(density_lm) ~ fitted(density_lm))
-Anova(density_lm)
+# density_lm <- lm(mean_distance ~ Elevation * Fire , data = data)
+# #plot(resid(density_lm) ~ fitted(density_lm))
+# Anova(density_lm)
+# 
+# density_slope <- summary(emtrends(density_lm, ~ Fire, var = "Elevation"))[1, 2] 
+# density_intercept <- summary(emmeans(density_lm, ~ Fire, at = list(Elevation = 0)))[1, 2] 
+# density_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
+# density_trend <- density_intercept + density_seq * density_slope
+# density_trend <- as.data.frame(cbind(density_seq, density_trend))
+# 
+# (plot_density <- ggplot(data = data, aes(x = Elevation, y = mean_distance)) +
+#     geom_jitter(aes(shape = Site, color = Fire), size = 2) +
+#     scale_color_manual(values = c('red', 'blue'),
+#                        labels = c('Exposure to 1947 fire', 'No exposure to 1947 fire')) +
+#     scale_shape_manual(values = c(8, 17, 18, 15), 
+#                        labels = c('GOR', 'SCT', 'WON', 'STS')) +
+#     geom_line(data = density_trend, aes(x = density_seq, y = density_trend), 
+#               col = 'black', lwd = 2, alpha = 0.8) +
+#     theme_few(base_size = 16) +
+#     scale_x_continuous(name = "Elevation (m)", limits = c(0, 500)) +
+#     scale_y_continuous(name = "Distance Between Neighbors (m)", limits = c(0, 6)) + 
+#     guides(color = guide_legend("Fire History")))
 
-density_slope <- summary(emtrends(density_lm, ~ Fire, var = "Elevation"))[1, 2] 
-density_intercept <- summary(emmeans(density_lm, ~ Fire, at = list(Elevation = 0)))[1, 2] 
-density_seq <- seq(min(data$Elevation, na.rm = T), max(data$Elevation, na.rm = T), 0.01)
-density_trend <- density_intercept + density_seq * density_slope
-density_trend <- as.data.frame(cbind(density_seq, density_trend))
-
-(plot_density <- ggplot(data = data, aes(x = Elevation, y = mean_distance)) +
-    geom_jitter(aes(shape = Site, color = Fire), size = 2) +
-    scale_color_manual(values = c('red', 'blue'),
-                       labels = c('Exposure to 1947 fire', 'No exposure to 1947 fire')) +
-    scale_shape_manual(values = c(8, 17, 18, 15), 
-                       labels = c('GOR', 'SCT', 'WON', 'STS')) +
-    geom_line(data = density_trend, aes(x = density_seq, y = density_trend), 
-              col = 'black', lwd = 2, alpha = 0.8) +
-    theme_few(base_size = 16) +
-    scale_x_continuous(name = "Elevation (m)", limits = c(0, 500)) +
-    scale_y_continuous(name = "Distance Between Neighbors (m)", limits = c(0, 6)) + 
-    guides(color = guide_legend("Fire History")))
-
-(plots_allometry <- plot_canopy + plot_diam + plot_density + plot_height + 
+(plots_allometry <- plot_canopy + plot_diam + plot_height + 
     plot_layout(guides = 'collect') +
     plot_annotation(tag_levels = 'A') & 
     theme(plot.tag = element_text(size = 16)))
@@ -734,7 +734,7 @@ topography <- data %>% group_by(Site) %>% summarise_at(vars(Latitude, Longitude,
 #### create table with degrees of f reedom, f-value, p-value results from linear models
 write.csv(cbind(as.matrix(as.data.frame(Anova(canopy_lm))[, c(2:4)]),
                as.matrix(as.data.frame(Anova(diam_lm))[, c(2:4)]),
-               as.matrix(as.data.frame(Anova(density_lm))[, c(2:4)]),
+               # as.matrix(as.data.frame(Anova(density_lm))[, c(2:4)]),
                # as.matrix(as.data.frame(Anova(slope_lm))[, c(2:4)]),
                as.matrix(as.data.frame(Anova(height_lm))[, c(2:4)])),
          'tables/allometry.csv')
@@ -799,7 +799,7 @@ write.csv(cbind(as.matrix(as.data.frame(Anova(Al_soil_lm))[, c(2:4)]),
 
 ## allometry
 ggsave("plots/plots_allometry.jpeg", plot = plots_allometry,
-       width = 28, height = 18, units = "cm", dpi = 600) # 4 panels
+       width = 45, height = 18, units = "cm", dpi = 600) # 4 panels
 
 ## foliar nutrients
 ggsave("plots/plots_foliar_organics.jpeg", plot = plots_foliar_organic,
